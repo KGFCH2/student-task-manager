@@ -59,7 +59,7 @@ function addTask() {
   document.getElementById("taskList").appendChild(li);
   
   input.value = "";
-
+  taskTracker();
 }
 function toggleTheme() {
   const body = document.body;
@@ -84,10 +84,6 @@ window.onload = function () {
     document.getElementById("themeToggle").textContent = "☀️ Light Mode";
   }
 };
-=======
-
-  updateUI();
-}
 
 function toggleTask(checkbox) {
   const span = checkbox.nextElementSibling;
@@ -110,6 +106,4 @@ function taskTracker() {
   if (stats) {
     stats.innerText = `✅ ${completed.length} / ${tasks.length} completed`;
   }
-}
-
 }
