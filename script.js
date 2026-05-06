@@ -3,8 +3,8 @@ function addTask() {
   const task = input.value.trim();
   const errorMsg = document.getElementById("errorMsg");
 
-  if (task.trim()=== "") {
-    errorMsg.textContent = " Please enter a task.";
+  if (task === "") {
+    errorMsg.textContent = "Please enter a task.";
     return;
   };
   errorMsg.textContent = "";
@@ -26,24 +26,31 @@ function addTask() {
   const date =`${now.getDate()} ${now.toLocaleString("default", { month: "long" })} ${now.getFullYear()}`;
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const timeElement = document.createElement("small");
-  timeElement.textContent = ` (${day}, ${date} at ${time})`;
-  timeElement.style.marginLeft = "10px";
-  timeElement.style.color = "#888";
+  timeElement.textContent = ` ${day}, ${date} at ${time}`;
 
+  // Text wrapper 
+  const textWrapper = document.createElement("div");
+  textWrapper.className = "task-text-wrapper";
+  textWrapper.appendChild(span);
+  textWrapper.appendChild(timeElement);
 
+  // Edit button
   const editButton = document.createElement("button");
-    editButton.textContent = "Edit";
-    editButton.addEventListener("click", function () {
-      const newTask = prompt("Edit task:", span.textContent);
-      if (newTask !== null) {
-        span.textContent = newTask;
-      }
-    });
-    li.appendChild(span);
-    li.appendChild(timeElement);
-    li.appendChild(editButton);
+  editButton.textContent = "Edit";
+  editButton.setAttribute("aria-label", "Edit task");
+  editButton.setAttribute("title", "Edit task");
+  editButton.addEventListener("click", function () {
+    const newTask = prompt("Edit task:", span.textContent);
+    if (newTask !== null && newTask.trim() !== "") {
+      span.textContent = newTask.trim();
+    }
+  });
+  
+  // Remove button
   const removeButton = document.createElement("button");
   removeButton.textContent = "Remove";
+  removeButton.setAttribute("title", "Remove task");
+  removeButton.setAttribute("aria-label", "Remove task");
   removeButton.addEventListener("click", function () {
     li.remove();
 
@@ -54,9 +61,8 @@ function addTask() {
 
 
   li.appendChild(checkbox);
-  li.appendChild(span);
-
-
+  li.appendChild(textWrapper);
+  li.appendChild(editButton);
   li.appendChild(removeButton);
 
   document.getElementById("taskList").appendChild(li);
@@ -66,6 +72,7 @@ function addTask() {
   taskTracker();
 
 }
+
 /* =========================
    MULTI-THEME SWITCHER
 ========================= */
@@ -91,7 +98,8 @@ if (themeSwitcher) {
 
 
 function toggleTask(checkbox) {
-  const span = checkbox.nextElementSibling;
+  const textWrapper = checkbox.nextElementSibling;
+  const span = textWrapper.querySelector("span");
   span.classList.toggle("completed");
 
   taskTracker();
