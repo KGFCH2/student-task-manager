@@ -178,8 +178,8 @@ select {
   padding: 0.85rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: var(--surface-strong);
+  color: var(--text);
   cursor: pointer;
 }
 
