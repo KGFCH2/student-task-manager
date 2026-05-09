@@ -2,14 +2,7 @@
 /* Enhanced Version */
 
 :root {
-    /* Color Tokens */
-    --primary: #6366f1;
-    --primary-hover: #4f46e5;
-    --danger: #ef4444;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    
-    /* Layout */
+    /* Layout Tokens */
     --radius-lg: 16px;
     --radius-md: 12px;
     --radius-sm: 8px;
@@ -19,18 +12,32 @@
 
 /* Theme Definitions */
 [data-theme="light"] {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-alpha: rgba(79, 70, 229, 0.1);
+    --danger: #ef4444;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --warning-alpha: rgba(245, 158, 11, 0.1);
     --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --card-bg: rgba(255, 255, 255, 0.8);
-    --card-border: rgba(255, 255, 255, 0.5);
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --card-bg: rgba(255, 255, 255, 0.85);
+    --card-border: rgba(0, 0, 0, 0.08);
     --input-bg: #ffffff;
-    --item-bg: rgba(255, 255, 255, 0.9);
+    --item-bg: rgba(255, 255, 255, 0.95);
 }
 
 [data-theme="dark"] {
+    --primary: #818cf8;
+    --primary-hover: #6366f1;
+    --primary-alpha: rgba(129, 140, 248, 0.15);
+    --danger: #f87171;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --warning-alpha: rgba(251, 191, 36, 0.15);
     --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    --text-main: #f1f5f9;
+    --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --card-bg: rgba(30, 41, 59, 0.7);
     --card-border: rgba(255, 255, 255, 0.1);
@@ -39,6 +46,13 @@
 }
 
 [data-theme="blue"] {
+    --primary: #38bdf8;
+    --primary-hover: #0ea5e9;
+    --primary-alpha: rgba(56, 189, 248, 0.2);
+    --danger: #fb7185;
+    --success: #2dd4bf;
+    --warning: #fbbf24;
+    --warning-alpha: rgba(251, 191, 36, 0.2);
     --bg-gradient: linear-gradient(135deg, #0c4a6e 0%, #075985 100%);
     --text-main: #f0f9ff;
     --text-muted: #bae6fd;
@@ -49,11 +63,18 @@
 }
 
 [data-theme="pastel"] {
+    --primary: #db2777;
+    --primary-hover: #be185d;
+    --primary-alpha: rgba(219, 39, 119, 0.15);
+    --danger: #e11d48;
+    --success: #059669;
+    --warning: #d97706;
+    --warning-alpha: rgba(217, 119, 6, 0.15);
     --bg-gradient: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
     --text-main: #4d1d4d;
     --text-muted: #9d174d;
-    --card-bg: rgba(255, 255, 255, 0.6);
-    --card-border: rgba(244, 114, 182, 0.2);
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-border: rgba(219, 39, 119, 0.2);
     --input-bg: #ffffff;
     --item-bg: rgba(253, 242, 248, 0.8);
 }
@@ -343,12 +364,12 @@ button:active {
 }
 
 .category-tag {
-    background: rgba(99, 102, 241, 0.1);
+    background: var(--primary-alpha);
     color: var(--primary);
 }
 
 .priority-tag {
-    background: rgba(245, 158, 11, 0.1);
+    background: var(--warning-alpha);
     color: var(--warning);
 }
 
@@ -421,6 +442,25 @@ button:active {
     font-weight: 700;
 }
 
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 5px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.close-btn:hover {
+    color: var(--danger);
+    transform: scale(1.1);
+}
+
 /* Footer */
 .site-footer {
     text-align: center;
@@ -464,4 +504,71 @@ button:active {
         flex-direction: column;
         gap: 12px;
     }
-}
+
+    .site-footer nav {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .site-footer a {
+        margin: 5px 0;
+    }
+
+}
+
+/* Legal Pages Styling */
+.legal-page .container {
+    text-align: center;
+    max-width: 700px;
+    padding-top: 40px;
+}
+
+.legal-page .site-header h1 {
+    justify-content: center;
+}
+
+.legal-tile {
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.legal-tile:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.legal-page h2 {
+    margin-top: 0; /* Reset for inside tiles */
+    margin-bottom: 16px;
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.legal-page p {
+    margin-bottom: 0; /* Reset for inside tiles */
+    color: var(--text-main);
+    opacity: 0.9;
+}
+
+.legal-page .container > p {
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+.legal-page .container a {
+    display: inline-block;
+    margin-top: 20px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.2s;
+}
+
+.legal-page .container a:hover {
+    transform: translateX(-5px);
+}
+
