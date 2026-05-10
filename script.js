@@ -30,11 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         attachEventListeners();
     }
 
-    function setupTheme() {
-        const savedTheme = localStorage.getItem('nexus_theme') || 'dark';
-        document.body.setAttribute('data-theme', savedTheme);
-        if (themeSwitcher) themeSwitcher.value = savedTheme;
-    }
+const elements = {};
 
     function attachEventListeners() {
         // Add Task
@@ -80,109 +76,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addTask() {
-        const text = taskInput.value.trim();
-        const category = taskCategory.value;
-        const priority = taskPriority.value;
+  loadTheme();
+  bindEvents();
+  renderTasks();
+});
 
-        if (text === '') {
-            showError('Please enter a task description.');
-            return;
-        }
+function bindEvents() {
+  if (elements.taskForm) {
+    elements.taskForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      addTask();
+    });
+  }
 
-        const newTask = {
-            id: Date.now(),
-            text,
-            category,
-            priority,
-            completed: false,
-            createdAt: new Date().toISOString()
-        };
+  if (elements.taskInput) {
+    elements.taskInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addTask();
+      }
+    });
+  }
 
-        tasks.unshift(newTask);
-        taskInput.value = '';
-        errorMsg.textContent = '';
-        saveAndRender();
-    }
+  if (elements.searchInput) {
+    elements.searchInput.addEventListener("input", (event) => {
+      state.searchQuery = event.target.value;
+      renderTasks();
+    });
+  }
 
-    function toggleTask(id) {
-        tasks = tasks.map(task => 
-            task.id === id ? { ...task, completed: !task.completed } : task
-        );
-        saveAndRender();
-    }
+  if (elements.filterButtons) {
+    elements.filterButtons.addEventListener("click", (event) => {
+      const button = event.target.closest(".filter-btn");
+      if (!button) return;
 
-    function deleteTask(id) {
-        tasks = tasks.filter(task => task.id !== id);
-        saveAndRender();
-    }
-
-    function editTask(id) {
-        const task = tasks.find(t => t.id === id);
-        const newText = prompt('Edit your task:', task.text);
-        if (newText !== null && newText.trim() !== '') {
-            tasks = tasks.map(t => 
-                t.id === id ? { ...t, text: newText.trim() } : t
-            );
-            saveAndRender();
-        }
-    }
-
-    function saveAndRender() {
-        localStorage.setItem('nexus_tasks', JSON.stringify(tasks));
-        renderTasks(searchInput.value);
-    }
-
-    function renderTasks(filter = '') {
-        const filteredTasks = tasks.filter(task => 
-            task.text.toLowerCase().includes(filter.toLowerCase())
-        );
-
-        taskList.innerHTML = '';
-
-        if (filteredTasks.length === 0) {
-            emptyState.style.display = 'block';
-            emptyState.querySelector('p').textContent = filter ? 'No matching tasks found.' : 'No tasks yet. Add one to get started!';
-        } else {
-            emptyState.style.display = 'none';
-        }
-
-        filteredTasks.forEach(task => {
-            const li = document.createElement('li');
-            li.className = `task-item ${task.completed ? 'completed' : ''} priority-${task.priority.toLowerCase()}`;
-            
-            const date = new Date(task.createdAt);
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const dateStr = date.toLocaleDateString();
-
-            li.innerHTML = `
-                <div class="task-main">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} aria-label="Toggle task">
-                    <div class="task-content">
-                        <span class="task-text">${escapeHtml(task.text)}</span>
-                        <div class="task-meta">
-                            <span class="tag category-tag">${task.category}</span>
-                            <span class="tag priority-tag">${task.priority}</span>
-                            <span class="timestamp">${dateStr} at ${timeStr}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="task-actions">
-                    <button class="btn-icon edit-btn" title="Edit Task">✏️</button>
-                    <button class="btn-icon delete-btn" title="Delete Task">🗑️</button>
-                </div>
-            `;
-
-            // Event Listeners for dynamic elements
-            li.querySelector('input').addEventListener('change', () => toggleTask(task.id));
-            li.querySelector('.delete-btn').addEventListener('click', () => deleteTask(task.id));
-            li.querySelector('.edit-btn').addEventListener('click', () => editTask(task.id));
-
-            taskList.appendChild(li);
-        });
-
-        updateStats();
-    }
+      document.querySelectorAll(".filter-btn").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      state.currentFilter = button.dataset.filter;
+      renderTasks();
+    });
+  }
 
     function updateStats() {
         const total = tasks.length;
@@ -204,15 +137,226 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function showError(msg) {
-        errorMsg.textContent = msg;
-        setTimeout(() => { errorMsg.textContent = ''; }, 3000);
-    }
+  if (elements.sortAscBtn) {
+    elements.sortAscBtn.addEventListener("click", () => sortTasks("asc"));
+  }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-});
+  if (elements.sortDescBtn) {
+    elements.sortDescBtn.addEventListener("click", () => sortTasks("desc"));
+  }
+}
 
+function addTask() {
+  const text = elements.taskInput.value.trim();
+  const category = elements.categoryInput.value;
+
+  if (!text) {
+    elements.errorMsg.textContent = "Please enter a task.";
+    return;
+  }
+
+  elements.errorMsg.textContent = "";
+
+  state.tasks.unshift({
+    id: Date.now(),
+    text,
+    category,
+    completed: false,
+    createdAt: formatTimestamp(new Date()),
+  });
+
+  saveTasks();
+  elements.taskInput.value = "";
+  elements.taskInput.focus();
+  renderTasks();
+}
+
+function toggleTask(id) {
+  state.tasks = state.tasks.map((task) => {
+    if (task.id === id) {
+      return { ...task, completed: !task.completed };
+    }
+    return task;
+  });
+
+  saveTasks();
+  renderTasks();
+}
+
+function editTask(id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task) return;
+
+  const updatedText = prompt("Edit task:", task.text);
+  if (updatedText === null) return;
+
+  const trimmedText = updatedText.trim();
+  if (!trimmedText) return;
+
+  task.text = trimmedText;
+  task.createdAt = formatTimestamp(new Date());
+  saveTasks();
+  renderTasks();
+}
+
+function deleteTask(id) {
+  state.tasks = state.tasks.filter((task) => task.id !== id);
+  saveTasks();
+  renderTasks();
+}
+
+function sortTasks(order) {
+  state.tasks.sort((first, second) => {
+    const comparison = first.text.localeCompare(second.text, undefined, { sensitivity: "base" });
+    return order === "asc" ? comparison : -comparison;
+  });
+
+  saveTasks();
+  renderTasks();
+}
+
+function renderTasks() {
+  if (!elements.taskList) return;
+
+  elements.taskList.innerHTML = "";
+
+  const visibleTasks = state.tasks.filter((task) => {
+    const matchesSearch = task.text.toLowerCase().includes(state.searchQuery.toLowerCase());
+    const matchesFilter =
+      state.currentFilter === "all" ||
+      (state.currentFilter === "active" && !task.completed) ||
+      (state.currentFilter === "completed" && task.completed) ||
+      task.category === state.currentFilter;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  elements.emptyState.hidden = visibleTasks.length !== 0;
+
+  if (visibleTasks.length === 0) {
+    const emptyMessage = state.searchQuery
+      ? "No matching tasks found."
+      : state.currentFilter === "all"
+        ? "No tasks yet. Add one to get started."
+        : "No tasks match this filter.";
+    elements.emptyState.textContent = emptyMessage;
+  } else {
+    visibleTasks.forEach((task) => {
+      elements.taskList.appendChild(createTaskElement(task));
+    });
+  }
+
+  updateStats();
+  updateCelebration();
+}
+
+function createTaskElement(task) {
+  const li = document.createElement("li");
+  li.dataset.category = task.category;
+  if (task.completed) {
+    li.classList.add("completed");
+  }
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = task.completed;
+  checkbox.addEventListener("change", () => toggleTask(task.id));
+
+  const content = document.createElement("div");
+  content.className = "task-content";
+
+  const textRow = document.createElement("div");
+  textRow.className = "task-text-row";
+
+  const text = document.createElement("span");
+  text.className = "task-text";
+  text.textContent = task.text;
+
+  const badge = document.createElement("span");
+  badge.className = "category-badge";
+  badge.textContent = `${getCategoryEmoji(task.category)} ${task.category}`;
+
+  const time = document.createElement("small");
+  time.className = "task-time";
+  time.textContent = task.createdAt;
+
+  const actions = document.createElement("div");
+  actions.className = "task-actions";
+
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "edit-btn";
+  editButton.textContent = "Edit";
+  editButton.addEventListener("click", () => editTask(task.id));
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "remove-btn";
+  removeButton.textContent = "Remove";
+  removeButton.addEventListener("click", () => deleteTask(task.id));
+
+  textRow.append(text, badge);
+  content.append(textRow, time);
+  actions.append(editButton, removeButton);
+  li.append(checkbox, content, actions);
+
+  return li;
+}
+
+function updateStats() {
+  if (!elements.taskStats) return;
+
+  const completedCount = state.tasks.filter((task) => task.completed).length;
+  elements.taskStats.textContent = `${completedCount} / ${state.tasks.length} completed`;
+}
+
+function updateCelebration() {
+  if (!elements.celebration) return;
+
+  const hasTasks = state.tasks.length > 0;
+  const allComplete = hasTasks && state.tasks.every((task) => task.completed);
+
+  elements.celebration.classList.toggle("hidden", !allComplete);
+  elements.celebration.classList.toggle("show", allComplete);
+}
+
+function saveTasks() {
+  localStorage.setItem("tasks", JSON.stringify(state.tasks));
+}
+
+function loadTheme() {
+  const savedTheme = localStorage.getItem("theme") || "light";
+  setTheme(savedTheme, false);
+}
+
+function setTheme(theme, persist = true) {
+  document.documentElement.setAttribute("data-theme", theme);
+  if (elements.themeSwitcher) {
+    elements.themeSwitcher.value = theme;
+  }
+  if (persist) {
+    localStorage.setItem("theme", theme);
+  }
+}
+
+function formatTimestamp(date) {
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const day = dayNames[date.getDay()];
+  const dayOfMonth = date.getDate();
+  const month = date.toLocaleString("default", { month: "long" });
+  const year = date.getFullYear();
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  return `${day}, ${dayOfMonth} ${month} ${year} at ${time}`;
+}
+
+function getCategoryEmoji(category) {
+  const emojis = {
+    Theory: "📘",
+    Practical: "💻",
+    Revision: "🔄",
+    Assignment: "📝",
+  };
+
+  return emojis[category] || "📚";
+}
