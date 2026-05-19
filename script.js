@@ -1985,6 +1985,29 @@ document.addEventListener("DOMContentLoaded", () => {
   updateDisplay();
   renderProfile();
 
+  // Initialize Scratchpad Autosave
+  const scratchpadInput = document.getElementById("scratchpadInput");
+  const scratchpadStatus = document.getElementById("scratchpadStatus");
+  if (scratchpadInput) {
+    scratchpadInput.value = localStorage.getItem("quests_scratchpad") || "";
+
+    let saveTimeout;
+    scratchpadInput.addEventListener("input", () => {
+      if (scratchpadStatus) {
+        scratchpadStatus.textContent = "Saving...";
+        scratchpadStatus.classList.add("saving");
+      }
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        localStorage.setItem("quests_scratchpad", scratchpadInput.value);
+        if (scratchpadStatus) {
+          scratchpadStatus.textContent = "Autosaved to LocalStorage";
+          scratchpadStatus.classList.remove("saving");
+        }
+      }, 800);
+    });
+  }
+
 
 
   // Setup dragover reordering for list container
