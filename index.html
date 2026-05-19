@@ -145,9 +145,12 @@
           <button class="burger-btn" id="mobileSidebarToggle" aria-label="Toggle Sidebar Menu">
             <i class="ri-menu-line"></i>
           </button>
-          <div>
-            <h2>Dashboard</h2>
-            <p>Conquer your goals one task at a time ✨</p>
+          <div class="topbar-brand">
+            <div class="topbar-logo"><i class="ri-gamepad-fill"></i></div>
+            <div>
+              <h2>TaskQuest</h2>
+              <p class="mobile-hidden">Conquer your goals one task at a time ✨</p>
+            </div>
           </div>
 
         </div>
@@ -288,6 +291,18 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- QUICK BRAIN DUMP SCRATCHPAD -->
+        <div class="scratchpad-card glass">
+          <div class="scratchpad-header">
+            <div class="scratchpad-title">
+              <i class="ri-sticky-note-line"></i>
+              <span>Quick Brain Dump</span>
+            </div>
+            <span class="save-status" id="scratchpadStatus">Autosaved to LocalStorage</span>
+          </div>
+          <textarea id="scratchpadInput" placeholder="Jot down quick thoughts, links, ideas, or temporary tasks here..." aria-label="Scratchpad for quick thoughts"></textarea>
         </div>
       </div>
 
