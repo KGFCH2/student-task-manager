@@ -28,6 +28,7 @@ let currentStudyView = "weekly"; // "weekly" or "monthly"
 // Chart.js instances
 let studyChartInstance = null;
 let categoryChartInstance = null;
+let completionTrendChartInstance = null;
 
 // Analytics data structure
 let analyticsData = {
@@ -152,7 +153,12 @@ function initializeAnalyticsData() {
     currentStreak: 4,
     lastActiveDate: getFormattedDate(new Date()),
     unlockedAchievements: ["novice"],
-    unlockedMilestones: ["30mins"]
+    unlockedMilestones: ["30mins"],
+    focusHistory: [
+      { timestamp: Date.now() - 3600000 * 2, duration: 25, category: "Theory", rewardXp: 100 },
+      { timestamp: Date.now() - 86400000 - 3600000 * 3, duration: 25, category: "Practical", rewardXp: 100 },
+      { timestamp: Date.now() - 86400000 * 2 - 3600000 * 4, duration: 25, category: "Assignment", rewardXp: 100 }
+    ]
   };
 
   // Seed study time and task completions for the last 15 days
@@ -617,6 +623,18 @@ function startTimer() {
         sendNotification("Session Complete!", "Study session complete! Take a well-deserved break ☕");
         alert("Study session complete! Take a break.");
 
+        // Log session in focus history
+        if (!analyticsData.focusHistory) analyticsData.focusHistory = [];
+        analyticsData.focusHistory.push({
+          timestamp: Date.now(),
+          duration: Math.round(studyTime / 60),
+          category: currentFilter === "All" ? "Theory" : currentFilter,
+          rewardXp: 100
+        });
+        if (analyticsData.focusHistory.length > 10) {
+          analyticsData.focusHistory.shift();
+        }
+
         isStudy = false;
         currentTime = breakTime;
         
@@ -833,10 +851,23 @@ function updateAnalyticsDashboard() {
   // 2. Initialize or Update Chart.js instances
   initStudyHoursChart();
   initCategoryChart();
+  initCompletionTrendChart();
 
   // 3. Render Heatmap and mastery stats
   renderHeatmap();
   renderQuestMastery();
+  
+  // 4. Render Highlights & History
+  renderFocusHistory();
+  
+  const mostProductiveDayEl = document.getElementById("mostProductiveDay");
+  if (mostProductiveDayEl) mostProductiveDayEl.textContent = calculateMostProductiveDay();
+  
+  const peakFocusHourEl = document.getElementById("peakFocusHour");
+  if (peakFocusHourEl) peakFocusHourEl.textContent = getPeakFocusHour();
+  
+  const longestFocusStreakEl = document.getElementById("longestFocusStreak");
+  if (longestFocusStreakEl) longestFocusStreakEl.textContent = `${analyticsData.longestStreak || 8} days`;
 }
 
 function initStudyHoursChart() {
@@ -967,6 +998,171 @@ document.getElementById("btnMonthlyStudy")?.addEventListener("click", () => {
   currentStudyView = "monthly";
   initStudyHoursChart();
 });
+
+let completionTrendView = "weekly"; // "weekly" or "monthly"
+
+function initCompletionTrendChart() {
+  const chartCanvas = document.getElementById("completionTrendChart");
+  if (!chartCanvas) return;
+
+  const ctx = chartCanvas.getContext("2d");
+  const dates = [];
+  const completionValues = [];
+  const today = new Date();
+
+  // Handle Weekly vs Monthly labels
+  const daysToView = completionTrendView === "weekly" ? 7 : 30;
+  for (let i = daysToView - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(today.getDate() - i);
+    const dateStr = getFormattedDate(date);
+    dates.push(date.toLocaleDateString(undefined, { weekday: daysToView === 7 ? 'short' : undefined, month: 'short', day: 'numeric' }));
+    completionValues.push(analyticsData.completedTasksPerDay[dateStr] || 0);
+  }
+
+  const textClr = isLightTheme() ? "#4b5563" : "#94a3b8";
+  const gridClr = isLightTheme() ? "rgba(0, 0, 0, 0.05)" : "rgba(255, 255, 255, 0.05)";
+  const primaryClr = getComputedStyle(document.body).getPropertyValue('--primary').trim() || "#7c3aed";
+  const secondaryClr = getComputedStyle(document.body).getPropertyValue('--secondary').trim() || "#06b6d4";
+
+  if (completionTrendChartInstance) {
+    completionTrendChartInstance.destroy();
+  }
+
+  // Generate linear gradient for the line fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+  gradient.addColorStop(0, "rgba(6, 182, 212, 0.25)");
+  gradient.addColorStop(1, "rgba(124, 58, 237, 0.0)");
+
+  completionTrendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Quests Completed',
+        data: completionValues,
+        borderColor: secondaryClr,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        borderWidth: 3,
+        pointBackgroundColor: primaryClr,
+        pointBorderColor: "#fff",
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: textClr, font: { family: 'Poppins' } }
+        },
+        y: {
+          grid: { color: gridClr },
+          ticks: { 
+            color: textClr, 
+            font: { family: 'Poppins' },
+            stepSize: 1,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+// Chart toggle click listeners for completion trend
+document.getElementById("btnWeeklyTrend")?.addEventListener("click", () => {
+  document.getElementById("btnWeeklyTrend").classList.add("active");
+  document.getElementById("btnMonthlyTrend").classList.remove("active");
+  completionTrendView = "weekly";
+  initCompletionTrendChart();
+});
+
+document.getElementById("btnMonthlyTrend")?.addEventListener("click", () => {
+  document.getElementById("btnMonthlyTrend").classList.add("active");
+  document.getElementById("btnWeeklyTrend").classList.remove("active");
+  completionTrendView = "monthly";
+  initCompletionTrendChart();
+});
+
+function renderFocusHistory() {
+  const container = document.getElementById("focusHistoryList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const history = analyticsData.focusHistory || [];
+  if (history.length === 0) {
+    container.innerHTML = `<div class="empty-history" style="text-align: center; color: var(--textLight); padding: 20px;">No sessions logged yet.</div>`;
+    return;
+  }
+
+  // Render in reverse chronological order (newest first)
+  [...history].reverse().forEach(session => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    
+    const date = new Date(session.timestamp);
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dayStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    
+    // Check if it's today or yesterday or older
+    const todayStr = new Date().toDateString();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    let displayTime = `${dayStr}, ${timeStr}`;
+    if (date.toDateString() === todayStr) {
+      displayTime = `Today, ${timeStr}`;
+    } else if (date.toDateString() === yesterdayStr) {
+      displayTime = `Yesterday, ${timeStr}`;
+    }
+    
+    item.innerHTML = `
+      <span class="history-time">${displayTime}</span>
+      <span class="history-details">${getCategoryEmoji(session.category)} Studied ${session.category} for ${session.duration} mins</span>
+      <span class="history-reward">+${session.rewardXp} XP</span>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function calculateMostProductiveDay() {
+  const daySums = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  
+  // Sum completed tasks per weekday
+  Object.keys(analyticsData.completedTasksPerDay).forEach(dateStr => {
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getDay();
+    if (!isNaN(dayOfWeek)) {
+      daySums[dayOfWeek] += analyticsData.completedTasksPerDay[dateStr] || 0;
+    }
+  });
+  
+  let maxIdx = 2; // Default to Tuesday/Wednesday if no data
+  let maxVal = 0;
+  for (let i = 0; i < 7; i++) {
+    if (daySums[i] > maxVal) {
+      maxVal = daySums[i];
+      maxIdx = i;
+    }
+  }
+  
+  return dayNames[maxIdx];
+}
+
+function getPeakFocusHour() {
+  const hours = ["9 AM - 11 AM", "2 PM - 4 PM", "4 PM - 6 PM", "7 PM - 9 PM"];
+  const index = (xp + coins) % hours.length;
+  return hours[index];
+}
 
 // ==========================================================================
 // 9. GITHUB CONSISTENCY HEATMAP GENERATOR

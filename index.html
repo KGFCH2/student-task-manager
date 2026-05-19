@@ -235,8 +235,11 @@
             <div class="stat-icon-wrapper blue">
               <i class="ri-time-line"></i>
             </div>
-            <div class="stat-info">
-              <h3 id="analyticsTotalHours">0.0h</h3>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsTotalHours">0.0h</h3>
+                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +12%</span>
+              </div>
               <p>Total Study Time</p>
             </div>
           </div>
@@ -245,8 +248,11 @@
             <div class="stat-icon-wrapper green">
               <i class="ri-checkbox-circle-fill"></i>
             </div>
-            <div class="stat-info">
-              <h3 id="analyticsCompletedQuests">0</h3>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsCompletedQuests">0</h3>
+                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +8%</span>
+              </div>
               <p>Completed Quests</p>
             </div>
           </div>
@@ -255,8 +261,11 @@
             <div class="stat-icon-wrapper orange">
               <i class="ri-fire-fill"></i>
             </div>
-            <div class="stat-info">
-              <h3 id="analyticsStreak">0 days</h3>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsStreak">0 days</h3>
+                <span class="trend-pill neutral">Steady</span>
+              </div>
               <p>Active Streak</p>
             </div>
           </div>
@@ -265,8 +274,11 @@
             <div class="stat-icon-wrapper purple">
               <i class="ri-percent-line"></i>
             </div>
-            <div class="stat-info">
-              <h3 id="analyticsCompletionRate">0%</h3>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsCompletionRate">0%</h3>
+                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +3%</span>
+              </div>
               <p>Completion Rate</p>
             </div>
           </div>
@@ -302,6 +314,23 @@
             </div>
             <div class="chart-wrapper pie-chart-wrapper">
               <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Quest Completion Trend -->
+          <div class="chart-card glass full-width">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-line-chart-fill"></i>
+                <h3>Quest Completion Trend</h3>
+              </div>
+              <div class="chart-toggle-group">
+                <button class="toggle-btn active" id="btnWeeklyTrend">Weekly</button>
+                <button class="toggle-btn" id="btnMonthlyTrend">Monthly</button>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="completionTrendChart"></canvas>
             </div>
           </div>
         </div>
@@ -343,6 +372,55 @@
             </div>
             <div class="subject-progress-list" id="subjectProgressList">
               <!-- Dynamically populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Insights & History Grid -->
+        <div class="analytics-insights-history-grid">
+          <!-- Card 1: Productivity Highlights -->
+          <div class="chart-card glass insights-card">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-lightbulb-flash-fill"></i>
+                <h3>Productivity Highlights</h3>
+              </div>
+            </div>
+            <div class="insights-content">
+              <div class="insight-item">
+                <div class="insight-label-icon">
+                  <i class="ri-calendar-check-line"></i>
+                  <span>Most Productive Day</span>
+                </div>
+                <div class="insight-value" id="mostProductiveDay">Wednesday</div>
+              </div>
+              <div class="insight-item">
+                <div class="insight-label-icon">
+                  <i class="ri-time-line"></i>
+                  <span>Peak Focus Hour</span>
+                </div>
+                <div class="insight-value" id="peakFocusHour">2 PM - 4 PM</div>
+              </div>
+              <div class="insight-item">
+                <div class="insight-label-icon">
+                  <i class="ri-shield-flash-line"></i>
+                  <span>Longest Focus Streak</span>
+                </div>
+                <div class="insight-value" id="longestFocusStreak">8 days</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Focus Session History -->
+          <div class="chart-card glass history-card">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-history-line"></i>
+                <h3>Focus Session History</h3>
+              </div>
+            </div>
+            <div class="history-list" id="focusHistoryList">
+              <!-- Populated dynamically by JS -->
             </div>
           </div>
         </div>
