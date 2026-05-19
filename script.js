@@ -1,92 +1,3 @@
-
-const taskInput = document.getElementById("taskInput");
-const addTaskBtn = document.getElementById("addTaskBtn");
-const taskList = document.getElementById("taskList");
-
-const totalTasks = document.getElementById("totalTasks");
-const completedTasks = document.getElementById("completedTasks");
-
-const coinsText = document.getElementById("coins");
-const streakText = document.getElementById("streakCount");
-
-const xpText = document.getElementById("xpText");
-const xpFill = document.getElementById("xpFill");
-
-const filterBtns = document.querySelectorAll(".filter-btn");
-
-const categorySelect =
-  document.getElementById("categorySelect");
-
-const questText =
-  document.getElementById("questText");
-
-const themeToggle =
-  document.getElementById("themeToggle");
-
-let tasks = [];
-
-let currentFilter = "All";
-
-let coins = 0;
-let streak = 0;
-let xp = 120;
-
-/* ADD TASK */
-
-function addTask() {
-
-  const text = taskInput.value.trim();
-
-  const category = categorySelect.value;
-
-  if (text === "") return;
-
-  const task = {
-
-    id: Date.now(),
-    text,
-    category,
-    completed: false
-
-  };
-
-  tasks.push(task);
-
-  taskInput.value = "";
-
-  renderTasks();
-}
-
-/* RENDER */
-
-function renderTasks() {
-
-  taskList.innerHTML = "";
-
-  let filteredTasks = tasks;
-
-  if (currentFilter !== "All") {
-
-    filteredTasks = tasks.filter(
-      task => task.category === currentFilter
-    );
-
-  }
-
-  if (filteredTasks.length === 0) {
-
-    //taskList.innerHTML = `
-
-      <div class="empty-state">
-
-        <i class="ri-ghost-2-line"></i>
-
-        <h3>No Tasks Yet</h3>
-
-        <p>
-          Add tasks and begin your productivity adventure.
-        </p>
-
 // Core Elements
 const taskInput = document.getElementById("taskInput");
 const addTaskBtn = document.getElementById("addTaskBtn");
@@ -476,7 +387,6 @@ function addTask() {
   renderTasks();
 }
 
-
 function renderTasks() {
   taskList.innerHTML = "";
 
@@ -503,7 +413,6 @@ function renderTasks() {
     }
 
     div.innerHTML = `
-
       <div class="task-left">
         <div class="check-btn" tabindex="0" aria-label="Toggle completed task"></div>
         <div>
@@ -519,8 +428,7 @@ function renderTasks() {
           <i class="ri-delete-bin-6-line"></i>
         </button>
       </div>
-
-   
+    `;
 
     // Toggle Complete event
     const checkBtn = div.querySelector(".check-btn");
@@ -544,10 +452,6 @@ function renderTasks() {
         coins = Math.max(0, coins - 10);
         streak = Math.max(0, streak - 1);
         xp = Math.max(0, xp - 20);
-
-          coins += 10;
-          streak += 1;
-          xp += 20;
 
         // Analytics Completed decrement
         if (analyticsData.completedTasksPerDay[todayStr]) {
@@ -594,14 +498,8 @@ function renderTasks() {
     taskList.appendChild(div);
   });
 
-
   updateStats();
 }
-
-
-          coins -= 10;
-          streak -= 1;
-          xp -= 20;
 
 function updateStats() {
   totalTasks.textContent = tasks.length;
@@ -627,7 +525,6 @@ function updateGamification() {
   const fillPercentage = Math.min(100, (currentLevelXp / 3));
   xpFill.style.width = `${fillPercentage}%`;
 }
-
 
 function updateAnalyticsStreak(todayStr) {
   if (analyticsData.lastActiveDate === todayStr) return;
@@ -706,16 +603,9 @@ function startTimer() {
 
     updateDisplay();
 
-
-        if (
-          updated !== null &&
-          updated.trim() !== ""
-        ) {
-
     if (currentTime <= 0) {
       clearInterval(timer);
       timer = null;
-
 
       if (isStudy) {
         sendNotification("Session Complete!", "Study session complete! Take a well-deserved break ☕");
@@ -774,15 +664,6 @@ tabBtns.forEach(btn => {
     tabBtns.forEach(b => b.classList.remove("active"));
     tabContents.forEach(c => c.classList.remove("active"));
 
-
-  const completed =
-    tasks.filter(task => task.completed).length;
-
-  completedTasks.textContent = completed;
-
-  questText.textContent = `${completed} / 5`;
-}
-
     btn.classList.add("active");
     const activeTabId = `${btn.dataset.tab}-tab`;
     const tabEl = document.getElementById(activeTabId);
@@ -804,7 +685,6 @@ tabBtns.forEach(btn => {
   });
 });
 
-
 // Mobile Bottom dock click routers
 document.querySelectorAll(".dock-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -822,10 +702,6 @@ document.querySelectorAll(".dock-btn").forEach(btn => {
 // 6. DYNAMIC ACHIEVEMENTS BADGES COMPILER
 // ==========================================================================
 
-
-  coinsText.textContent = coins;
-
-  streakText.textContent = streak;
 function renderAchievements() {
   const container = document.getElementById("badgesGrid");
   if (!container) return;
@@ -834,14 +710,11 @@ function renderAchievements() {
   achievementSpecs.forEach(ach => {
     const isUnlocked = analyticsData.unlockedAchievements.includes(ach.id);
 
-
     const badgeDiv = document.createElement("div");
     badgeDiv.classList.add("badge");
     badgeDiv.classList.add(isUnlocked ? "unlocked" : "locked");
 
     badgeDiv.textContent = ach.icon;
-
-/* FILTER */
 
     // Set custom tooltip
     const tooltipText = isUnlocked 
@@ -849,7 +722,6 @@ function renderAchievements() {
       : `Locked: ${ach.desc}`;
     badgeDiv.setAttribute("data-tooltip", tooltipText);
     badgeDiv.setAttribute("aria-label", tooltipText);
-
 
     container.appendChild(badgeDiv);
   });
@@ -1063,34 +935,14 @@ document.getElementById("btnMonthlyStudy")?.addEventListener("click", () => {
   initStudyHoursChart();
 });
 
-
-/* BUTTON */
-
-addTaskBtn.addEventListener(
-  "click",
-  addTask
-);
-
-/* POMODORO TIMER */
-
-let studyTime = 25 * 60;
-
-let breakTime = 5 * 60;
-
-
 // ==========================================================================
 // 9. GITHUB CONSISTENCY HEATMAP GENERATOR
 // ==========================================================================
-
-let timer;
-
-let isStudy = true;
 
 function renderHeatmap() {
   const container = document.getElementById("heatmapContainer");
   if (!container) return;
   container.innerHTML = "";
-
 
   const today = new Date();
   const weeksToDisplay = 15;
@@ -1120,17 +972,6 @@ function renderHeatmap() {
       else level = 4;
     }
 
-
-  const minutes =
-    Math.floor(currentTime / 60);
-
-  let seconds =
-    currentTime % 60;
-
-  seconds =
-    seconds < 10
-      ? "0" + seconds
-      : seconds;
     const dayBlock = document.createElement("div");
     dayBlock.classList.add("heatmap-day", `level-${level}`);
     
@@ -1142,7 +983,6 @@ function renderHeatmap() {
     container.appendChild(dayBlock);
   }
 }
-
 
 // ==========================================================================
 // 10. QUEST MASTERY PROGRESS LIST
@@ -1239,28 +1079,14 @@ if (mobileAddDrawerOverlay) {
   mobileAddDrawerOverlay.addEventListener("click", () => toggleMobileDrawer(false));
 }
 
-      clearInterval(timer);
-
-      timer = null;
-
 // Create new quest from mobile form
 if (mobileAddTaskBtn) {
   mobileAddTaskBtn.addEventListener("click", () => {
     const text = mobileTaskInput.value.trim();
     const category = mobileCategorySelect.value;
 
-
     if (text === "") return;
 
-
-        alert("Study session completed!");
-
-        isStudy = false;
-
-        currentTime = breakTime;
-
-        document.getElementById("modeText")
-          .innerText = "Break Time";
     const task = {
       id: Date.now(),
       text,
@@ -1277,24 +1103,11 @@ if (mobileAddTaskBtn) {
     }
     analyticsData.categoryStats[category].created += 1;
 
-
     saveData();
     renderTasks();
     toggleMobileDrawer(false); // Hide overlay
   });
 }
-
-
-        alert("Break finished!");
-
-        isStudy = true;
-
-        currentTime = studyTime;
-
-        document.getElementById("modeText")
-          .innerText = "Study Time";
-
-      }
 
 // ==========================================================================
 // 13. ACCESSIBILITY COMPLIANCE KEYBOARD SHORTCUTS
@@ -1317,7 +1130,6 @@ document.addEventListener("keydown", e => {
     const tabBtnQuests = document.querySelector('[data-tab="quests"]');
     if (tabBtnQuests) tabBtnQuests.click();
   }
-
 
   // Switch to analytics dashboard on Alt + 2
   if (e.altKey && e.key === '2') {
@@ -1349,25 +1161,6 @@ document.addEventListener("keydown", e => {
 // 14. INTERACTIVE SYSTEM INITIALIZATIONS
 // ==========================================================================
 
-
-  clearInterval(timer);
-
-  timer = null;
-}
-
-function resetTimer() {
-
-  clearInterval(timer);
-
-  timer = null;
-
-  isStudy = true;
-
-  currentTime = studyTime;
-
-  document.getElementById("modeText")
-    .innerText = "Study Time";
-
 // Filter Button routers
 filterBtns.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1394,7 +1187,6 @@ taskInput.addEventListener("keypress", e => {
 
 addTaskBtn.addEventListener("click", addTask);
 
-
 // Dom Loaded
 document.addEventListener("DOMContentLoaded", () => {
   loadData();
@@ -1403,10 +1195,4 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAchievements();
   renderWeeklyStreak();
   updateDisplay();
-
-}
-
-updateDisplay();
-
 });
-
