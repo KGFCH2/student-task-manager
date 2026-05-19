@@ -20,6 +20,7 @@ const tabContents = document.querySelectorAll(".tab-content");
 // Global states
 let tasks = [];
 let currentFilter = "All";
+let currentView = "list"; // "list" or "board"
 let coins = 0;
 let streak = 0;
 let xp = 120;
@@ -49,12 +50,84 @@ let analyticsData = {
 
 // Achievement specifications
 const achievementSpecs = [
-  { id: "novice", title: "Novice Scholar", desc: "Complete your first quest!", icon: "🎓", check: () => getCompletedQuestsCount() >= 1 },
-  { id: "spark", title: "Productivity Spark", desc: "Complete 5 quests!", icon: "⚡", check: () => getCompletedQuestsCount() >= 5 },
-  { id: "streak_flame", title: "Streak Flame", desc: "Reach a 3-day active streak!", icon: "🔥", check: () => streak >= 3 },
-  { id: "focus_master", title: "Focus Master", desc: "Accumulate 60 minutes of study!", icon: "🧭", check: () => getCumulativeStudyMinutes() >= 60 },
-  { id: "quest_master", title: "Quest Master Elite", desc: "Complete 15 quests!", icon: "🏆", check: () => getCompletedQuestsCount() >= 15 },
-  { id: "champion", title: "Grand Champion", desc: "Reach Level 5!", icon: "👑", check: () => getLevelNumber() >= 5 }
+  { 
+    id: "novice", 
+    title: "Novice Scholar", 
+    desc: "Complete your first quest!", 
+    icon: "🎓", 
+    rarity: "Common",
+    reward: 20,
+    check: () => getCompletedQuestsCount() >= 1,
+    progress: () => {
+      const completed = getCompletedQuestsCount();
+      return { current: completed, target: 1, percent: Math.min(100, (completed / 1) * 100) };
+    }
+  },
+  { 
+    id: "spark", 
+    title: "Productivity Spark", 
+    desc: "Complete 5 quests!", 
+    icon: "⚡", 
+    rarity: "Rare",
+    reward: 50,
+    check: () => getCompletedQuestsCount() >= 5,
+    progress: () => {
+      const completed = getCompletedQuestsCount();
+      return { current: completed, target: 5, percent: Math.min(100, (completed / 5) * 100) };
+    }
+  },
+  { 
+    id: "streak_flame", 
+    title: "Streak Flame", 
+    desc: "Reach a 3-day active streak!", 
+    icon: "🔥", 
+    rarity: "Rare",
+    reward: 50,
+    check: () => (analyticsData.currentStreak || 0) >= 3,
+    progress: () => {
+      const current = analyticsData.currentStreak || 0;
+      return { current, target: 3, percent: Math.min(100, (current / 3) * 100) };
+    }
+  },
+  { 
+    id: "focus_master", 
+    title: "Focus Master", 
+    desc: "Accumulate 60 minutes of study!", 
+    icon: "🧭", 
+    rarity: "Epic",
+    reward: 150,
+    check: () => getCumulativeStudyMinutes() >= 60,
+    progress: () => {
+      const mins = Math.round(getCumulativeStudyMinutes());
+      return { current: mins, target: 60, percent: Math.min(100, (mins / 60) * 100) };
+    }
+  },
+  { 
+    id: "quest_master", 
+    title: "Quest Master Elite", 
+    desc: "Complete 15 quests!", 
+    icon: "🏆", 
+    rarity: "Legendary",
+    reward: 300,
+    check: () => getCompletedQuestsCount() >= 15,
+    progress: () => {
+      const completed = getCompletedQuestsCount();
+      return { current: completed, target: 15, percent: Math.min(100, (completed / 15) * 100) };
+    }
+  },
+  { 
+    id: "champion", 
+    title: "Grand Champion", 
+    desc: "Reach Level 5!", 
+    icon: "👑", 
+    rarity: "Legendary",
+    reward: 500,
+    check: () => getLevelNumber() >= 5,
+    progress: () => {
+      const lvl = getLevelNumber();
+      return { current: lvl, target: 5, percent: Math.min(100, (lvl / 5) * 100) };
+    }
+  }
 ];
 
 // Focus milestones specifications
@@ -352,12 +425,14 @@ function checkStudyMilestones() {
 }
 
 // Dismiss popup buttons click listeners
-document.getElementById("claimLevelBtn")?.addEventListener("click", () => {
+document.getElementById("claimLevelBtn")?.addEventListener("click", (e) => {
+  triggerCoinExplosion(e);
   document.getElementById("levelUpPopupOverlay").classList.remove("active");
   document.getElementById("levelUpPopup").classList.remove("active");
 });
 
-document.getElementById("claimMilestoneBtn")?.addEventListener("click", () => {
+document.getElementById("claimMilestoneBtn")?.addEventListener("click", (e) => {
+  triggerCoinExplosion(e);
   document.getElementById("milestonePopupOverlay").classList.remove("active");
   document.getElementById("milestonePopup").classList.remove("active");
 });
@@ -369,6 +444,8 @@ document.getElementById("claimMilestoneBtn")?.addEventListener("click", () => {
 function addTask() {
   const text = taskInput.value.trim();
   const category = categorySelect.value;
+  const prioritySelect = document.getElementById("prioritySelect");
+  const priority = prioritySelect ? prioritySelect.value : "Medium";
 
   if (text === "") return;
 
@@ -376,6 +453,7 @@ function addTask() {
     id: Date.now(),
     text,
     category,
+    priority,
     completed: false,
     createdAt: getFormattedDate(new Date())
   };
@@ -393,124 +471,350 @@ function addTask() {
   renderTasks();
 }
 
-function renderTasks() {
-  taskList.innerHTML = "";
-
-  let filteredTasks = tasks;
-  if (currentFilter !== "All") {
-    filteredTasks = tasks.filter(task => task.category === currentFilter);
+function createTaskEl(task) {
+  const div = document.createElement("div");
+  div.classList.add("task");
+  div.setAttribute("draggable", "true");
+  div.setAttribute("data-id", task.id);
+  if (task.completed) {
+    div.classList.add("completed");
   }
 
-  if (filteredTasks.length === 0) {
-    taskList.innerHTML = `
-      <div class="empty-state">
-        <i class="ri-ghost-2-line"></i>
-        <h3>No Quests Yet</h3>
-        <p>Add tasks and begin your productivity journey ✨</p>
-      </div>
-    `;
-  }
+  const pri = task.priority || "Medium";
+  const catEmoji = getCategoryEmoji(task.category);
 
-  filteredTasks.forEach(task => {
-    const div = document.createElement("div");
-    div.classList.add("task");
-    if (task.completed) {
-      div.classList.add("completed");
-    }
-
-    div.innerHTML = `
-      <div class="task-left">
-        <div class="check-btn" tabindex="0" aria-label="Toggle completed task"></div>
-        <div>
-          <h3 class="task-title">${escapeHtml(task.text)}</h3>
-          <p class="task-category">${getCategoryEmoji(task.category)} ${task.category}</p>
+  div.innerHTML = `
+    <div class="drag-handle" title="Drag to reorder"><i class="ri-drag-move-fill"></i></div>
+    <div class="task-left">
+      <div class="check-btn" tabindex="0" aria-label="Toggle completed task"></div>
+      <div>
+        <h3 class="task-title">${escapeHtml(task.text)}</h3>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
+          <p class="task-category" style="margin: 0;">${catEmoji} ${task.category}</p>
+          <span class="priority-pill priority-${pri.toLowerCase()}">${pri}</span>
         </div>
       </div>
-      <div class="task-actions">
-        <button class="icon-btn edit-btn" aria-label="Edit Quest">
-          <i class="ri-edit-line"></i>
-        </button>
-        <button class="icon-btn delete-btn" aria-label="Delete Quest">
-          <i class="ri-delete-bin-6-line"></i>
-        </button>
-      </div>
-    `;
+    </div>
+    <div class="task-actions">
+      <button class="icon-btn edit-btn" aria-label="Edit Quest">
+        <i class="ri-edit-line"></i>
+      </button>
+      <button class="icon-btn delete-btn" aria-label="Delete Quest">
+        <i class="ri-delete-bin-6-line"></i>
+      </button>
+    </div>
+  `;
 
-    // Toggle Complete event
-    const checkBtn = div.querySelector(".check-btn");
-    const handleToggle = () => {
-      const oldXp = xp;
-      task.completed = !task.completed;
-      const todayStr = getFormattedDate(new Date());
+  // Toggle Complete event
+  const checkBtn = div.querySelector(".check-btn");
+  const handleToggle = () => {
+    const oldXp = xp;
+    task.completed = !task.completed;
+    const todayStr = getFormattedDate(new Date());
 
-      if (task.completed) {
-        coins += 10;
-        streak += 1;
-        xp += 20;
+    if (task.completed) {
+      coins += 10;
+      streak += 1;
+      xp += 20;
 
-        // Analytics Completed increment
-        analyticsData.completedTasksPerDay[todayStr] = (analyticsData.completedTasksPerDay[todayStr] || 0) + 1;
-        analyticsData.categoryStats[task.category].completed = (analyticsData.categoryStats[task.category].completed || 0) + 1;
-        
-        // Handle streak updates
-        updateAnalyticsStreak(todayStr);
-      } else {
-        coins = Math.max(0, coins - 10);
-        streak = Math.max(0, streak - 1);
-        xp = Math.max(0, xp - 20);
+      analyticsData.completedTasksPerDay[todayStr] = (analyticsData.completedTasksPerDay[todayStr] || 0) + 1;
+      analyticsData.categoryStats[task.category].completed = (analyticsData.categoryStats[task.category].completed || 0) + 1;
+      updateAnalyticsStreak(todayStr);
+    } else {
+      coins = Math.max(0, coins - 10);
+      streak = Math.max(0, streak - 1);
+      xp = Math.max(0, xp - 20);
 
-        // Analytics Completed decrement
-        if (analyticsData.completedTasksPerDay[todayStr]) {
-          analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
-        }
-        analyticsData.categoryStats[task.category].completed = Math.max(0, analyticsData.categoryStats[task.category].completed - 1);
+      if (analyticsData.completedTasksPerDay[todayStr]) {
+        analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
       }
+      analyticsData.categoryStats[task.category].completed = Math.max(0, analyticsData.categoryStats[task.category].completed - 1);
+    }
 
-      saveData();
-      updateGamification();
-      renderTasks();
-      
-      // Evaluate newly unlocked gamifications
-      checkLevelUp(oldXp, xp);
-      checkAchievements();
-      renderWeeklyStreak();
-    };
+    saveData();
+    updateGamification();
+    renderTasks();
+    
+    checkLevelUp(oldXp, xp);
+    checkAchievements();
+    renderWeeklyStreak();
+  };
 
-    checkBtn.addEventListener("click", handleToggle);
-    checkBtn.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleToggle();
-      }
-    });
-
-    // Delete task event
-    div.querySelector(".delete-btn").addEventListener("click", () => {
-      tasks = tasks.filter(t => t.id !== task.id);
-      saveData();
-      renderTasks();
-    });
-
-    // Edit task event
-    div.querySelector(".edit-btn").addEventListener("click", () => {
-      const updated = prompt("Edit your quest", task.text);
-      if (updated !== null && updated.trim() !== "") {
-        task.text = updated;
-        saveData();
-        renderTasks();
-      }
-    });
-
-    taskList.appendChild(div);
+  checkBtn.addEventListener("click", handleToggle);
+  checkBtn.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleToggle();
+    }
   });
+
+  // Delete task event
+  div.querySelector(".delete-btn").addEventListener("click", () => {
+    tasks = tasks.filter(t => t.id !== task.id);
+    saveData();
+    renderTasks();
+  });
+
+  // Edit task event
+  div.querySelector(".edit-btn").addEventListener("click", () => {
+    const updated = prompt("Edit your quest", task.text);
+    if (updated !== null && updated.trim() !== "") {
+      task.text = updated;
+      saveData();
+      renderTasks();
+    }
+  });
+
+  // HTML5 Drag Listeners on the card
+  div.addEventListener("dragstart", (e) => {
+    div.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", task.id);
+  });
+
+  div.addEventListener("dragend", () => {
+    div.classList.remove("dragging");
+    saveTaskOrder();
+  });
+
+  // Mobile Touch Drag Listeners
+  setupTouchDrag(div, task);
+
+  return div;
+}
+
+let touchDraggedEl = null;
+let touchStartOffset = { x: 0, y: 0 };
+
+function setupTouchDrag(el, task) {
+  const handle = el.querySelector(".drag-handle");
+  if (!handle) return;
+
+  handle.addEventListener("touchstart", (e) => {
+    const touch = e.touches[0];
+    touchDraggedEl = el;
+    
+    const rect = el.getBoundingClientRect();
+    touchStartOffset.x = touch.clientX - rect.left;
+    touchStartOffset.y = touch.clientY - rect.top;
+
+    el.classList.add("touch-dragging-active");
+    el.style.width = `${rect.width}px`;
+    el.style.left = `${touch.clientX - touchStartOffset.x}px`;
+    el.style.top = `${touch.clientY - touchStartOffset.y}px`;
+    
+    el.classList.add("dragging");
+    e.stopPropagation();
+  }, { passive: false });
+
+  handle.addEventListener("touchmove", (e) => {
+    if (!touchDraggedEl || touchDraggedEl !== el) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    el.style.left = `${touch.clientX - touchStartOffset.x}px`;
+    el.style.top = `${touch.clientY - touchStartOffset.y}px`;
+
+    el.style.visibility = "hidden";
+    const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+    el.style.visibility = "visible";
+
+    if (!elementUnderTouch) return;
+
+    const targetBody = elementUnderTouch.closest(".board-column-body");
+    if (targetBody && currentView === "board") {
+      if (targetBody.children.length === 0) {
+        targetBody.appendChild(el);
+      }
+    }
+
+    const targetTask = elementUnderTouch.closest(".task");
+    if (targetTask && targetTask !== el) {
+      const targetRect = targetTask.getBoundingClientRect();
+      const relativeY = touch.clientY - targetRect.top;
+      
+      const parent = targetTask.parentNode;
+      if (parent) {
+        if (relativeY < targetRect.height / 2) {
+          parent.insertBefore(el, targetTask);
+        } else {
+          parent.insertBefore(el, targetTask.nextSibling);
+        }
+      }
+    }
+  }, { passive: false });
+
+  handle.addEventListener("touchend", (e) => {
+    if (!touchDraggedEl || touchDraggedEl !== el) return;
+    
+    el.classList.remove("touch-dragging-active");
+    el.classList.remove("dragging");
+    el.style.width = "";
+    el.style.left = "";
+    el.style.top = "";
+    
+    touchDraggedEl = null;
+    saveTaskOrder();
+  });
+}
+
+function saveTaskOrder() {
+  const newTasksOrder = [];
+
+  if (currentView === "list") {
+    const taskElements = document.querySelectorAll("#taskList .task");
+    taskElements.forEach(el => {
+      const id = parseInt(el.getAttribute("data-id"));
+      const originalTask = tasks.find(t => t.id === id);
+      if (originalTask) {
+        newTasksOrder.push(originalTask);
+      }
+    });
+  } else {
+    const columns = document.querySelectorAll(".board-column-body");
+    columns.forEach(col => {
+      const category = col.getAttribute("data-category");
+      const taskElements = col.querySelectorAll(".task");
+      
+      taskElements.forEach(el => {
+        const id = parseInt(el.getAttribute("data-id"));
+        const originalTask = tasks.find(t => t.id === id);
+        if (originalTask) {
+          originalTask.category = category;
+          newTasksOrder.push(originalTask);
+        }
+      });
+    });
+  }
+
+  if (currentView === "list" && currentFilter !== "All") {
+    const renderedIds = newTasksOrder.map(t => t.id);
+    const unrenderedTasks = tasks.filter(t => !renderedIds.includes(t.id));
+    tasks = [...newTasksOrder, ...unrenderedTasks];
+  } else {
+    tasks = newTasksOrder;
+  }
+
+  saveData();
+  renderTasks();
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll(".task:not(.dragging)")];
+
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function setupColumnDragOver(body) {
+  body.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    body.classList.add("drag-over");
+    
+    const draggingEl = document.querySelector(".dragging");
+    if (!draggingEl) return;
+
+    const afterElement = getDragAfterElement(body, e.clientY);
+    if (afterElement == null) {
+      body.appendChild(draggingEl);
+    } else {
+      body.insertBefore(draggingEl, afterElement);
+    }
+  });
+
+  body.addEventListener("dragleave", () => {
+    body.classList.remove("drag-over");
+  });
+
+  body.addEventListener("drop", () => {
+    body.classList.remove("drag-over");
+    saveTaskOrder();
+  });
+}
+
+function renderTasks() {
+  const taskList = document.getElementById("taskList");
+  const boardColumns = document.getElementById("boardColumns");
+  const filtersDiv = document.querySelector(".filters");
+
+  if (currentView === "list") {
+    taskList.style.display = "flex";
+    boardColumns.style.display = "none";
+    if (filtersDiv) filtersDiv.style.display = "flex";
+
+    taskList.innerHTML = "";
+    
+    let filteredTasks = tasks;
+    if (currentFilter !== "All") {
+      filteredTasks = tasks.filter(task => task.category === currentFilter);
+    }
+
+    if (filteredTasks.length === 0) {
+      taskList.innerHTML = `
+        <div class="empty-state">
+          <i class="ri-ghost-2-line"></i>
+          <h3>No Quests Yet</h3>
+          <p>Add tasks and begin your productivity journey ✨</p>
+        </div>
+      `;
+      updateStats();
+      return;
+    }
+
+    filteredTasks.forEach(task => {
+      taskList.appendChild(createTaskEl(task));
+    });
+
+  } else {
+    taskList.style.display = "none";
+    boardColumns.style.display = "grid";
+    if (filtersDiv) filtersDiv.style.display = "none";
+
+    boardColumns.innerHTML = "";
+
+    const categories = ["Theory", "Practical", "Assignment", "Revision"];
+    
+    categories.forEach(cat => {
+      const colDiv = document.createElement("div");
+      colDiv.className = "board-column";
+      colDiv.setAttribute("data-category", cat);
+
+      const colTasks = tasks.filter(t => t.category === cat);
+      const catEmoji = getCategoryEmoji(cat);
+
+      colDiv.innerHTML = `
+        <div class="board-column-header">
+          <div class="column-title">${catEmoji} ${cat}</div>
+          <div class="column-count">${colTasks.length}</div>
+        </div>
+        <div class="board-column-body" data-category="${cat}"></div>
+      `;
+
+      const bodyDiv = colDiv.querySelector(".board-column-body");
+      colTasks.forEach(task => {
+        bodyDiv.appendChild(createTaskEl(task));
+      });
+
+      setupColumnDragOver(bodyDiv);
+      boardColumns.appendChild(colDiv);
+    });
+  }
 
   updateStats();
 }
 
 function updateStats() {
-  totalTasks.textContent = tasks.length;
-  const completed = tasks.filter(task => task.completed).length;
-  completedTasks.textContent = completed;
+  const totalTasks = document.getElementById("totalTasks");
+  const completedTasks = document.getElementById("completedTasks");
+  if (totalTasks) totalTasks.textContent = tasks.length;
+  if (completedTasks) completedTasks.textContent = tasks.filter(task => task.completed).length;
 }
 
 function updateGamification() {
@@ -530,6 +834,11 @@ function updateGamification() {
   
   const fillPercentage = Math.min(100, (currentLevelXp / 3));
   xpFill.style.width = `${fillPercentage}%`;
+
+  // Trigger XP fill pulse animation
+  xpFill.classList.remove("pulse");
+  void xpFill.offsetWidth; // Trigger DOM reflow to restart animation
+  xpFill.classList.add("pulse");
 }
 
 function updateAnalyticsStreak(todayStr) {
@@ -760,22 +1069,126 @@ function renderAchievements() {
 
   achievementSpecs.forEach(ach => {
     const isUnlocked = analyticsData.unlockedAchievements.includes(ach.id);
+    const prog = ach.progress();
 
     const badgeDiv = document.createElement("div");
     badgeDiv.classList.add("badge");
     badgeDiv.classList.add(isUnlocked ? "unlocked" : "locked");
+    badgeDiv.classList.add(`rarity-${ach.rarity.toLowerCase()}`);
 
     badgeDiv.textContent = ach.icon;
 
-    // Set custom tooltip
+    // Set custom tooltip showing progress
     const tooltipText = isUnlocked 
-      ? `Unlocked: ${ach.title} (${ach.desc})`
-      : `Locked: ${ach.desc}`;
+      ? `Unlocked: ${ach.title} (${ach.desc}) - ${ach.rarity}`
+      : `Locked: ${ach.desc} (${Math.round(prog.percent)}% complete)`;
     badgeDiv.setAttribute("data-tooltip", tooltipText);
     badgeDiv.setAttribute("aria-label", tooltipText);
 
+    // Click to open details modal
+    badgeDiv.addEventListener("click", () => {
+      openAchievementModal(ach);
+    });
+
     container.appendChild(badgeDiv);
   });
+}
+
+function openAchievementModal(ach) {
+  const overlay = document.getElementById("achievementModalOverlay");
+  const modal = document.getElementById("achievementModal");
+  if (!overlay || !modal) return;
+
+  const isUnlocked = analyticsData.unlockedAchievements.includes(ach.id);
+  const prog = ach.progress();
+
+  // Populate data
+  document.getElementById("modalBadgeIcon").textContent = ach.icon;
+  
+  const rarityEl = document.getElementById("modalRarityLabel");
+  rarityEl.textContent = ach.rarity;
+  rarityEl.className = `modal-rarity-pill rarity-${ach.rarity.toLowerCase()}`;
+  
+  // Set glow color based on rarity
+  const glowEl = document.getElementById("modalGlow");
+  let glowColor = "rgba(139, 92, 246, 0.4)";
+  if (ach.rarity === "Common") glowColor = "rgba(148, 163, 184, 0.3)";
+  else if (ach.rarity === "Rare") glowColor = "rgba(6, 182, 212, 0.4)";
+  else if (ach.rarity === "Epic") glowColor = "rgba(236, 72, 153, 0.4)";
+  else if (ach.rarity === "Legendary") glowColor = "rgba(245, 158, 11, 0.5)";
+  glowEl.style.background = `radial-gradient(circle, ${glowColor} 0%, rgba(0,0,0,0) 70%)`;
+
+  document.getElementById("modalBadgeTitle").textContent = ach.title;
+  document.getElementById("modalBadgeDesc").textContent = ach.desc;
+  document.getElementById("modalProgressText").textContent = `${prog.current} / ${prog.target}`;
+  document.getElementById("modalProgressFill").style.width = `${prog.percent}%`;
+  document.getElementById("modalRewardText").textContent = `+${ach.reward} Coins Reward`;
+  
+  const statusEl = document.getElementById("modalStatusText");
+  if (isUnlocked) {
+    statusEl.innerHTML = `<span class="unlocked-status"><i class="ri-checkbox-circle-fill"></i> Unlocked</span>`;
+  } else {
+    statusEl.innerHTML = `<span class="locked-status"><i class="ri-lock-2-line"></i> Locked (${Math.round(prog.percent)}% complete)</span>`;
+  }
+
+  overlay.classList.add("active");
+  modal.classList.add("active");
+}
+
+function closeAchievementModal() {
+  const overlay = document.getElementById("achievementModalOverlay");
+  const modal = document.getElementById("achievementModal");
+  if (overlay) overlay.classList.remove("active");
+  if (modal) modal.classList.remove("active");
+}
+
+// Attach Achievement Modal Close Event Listeners
+document.getElementById("closeAchievementModalBtn")?.addEventListener("click", closeAchievementModal);
+document.getElementById("achievementModalOverlay")?.addEventListener("click", closeAchievementModal);
+
+function triggerCoinExplosion(event) {
+  const target = document.getElementById("coins");
+  if (!target) return;
+
+  const targetRect = target.getBoundingClientRect();
+  
+  // Get button location or center of screen if event is not passed
+  let startX = window.innerWidth / 2;
+  let startY = window.innerHeight / 2;
+  if (event && event.clientX) {
+    startX = event.clientX;
+    startY = event.clientY;
+  }
+
+  const coinCount = 15;
+  for (let i = 0; i < coinCount; i++) {
+    const coin = document.createElement("div");
+    coin.className = "flying-coin";
+    coin.innerHTML = '<i class="ri-coin-fill"></i>';
+    coin.style.left = `${startX}px`;
+    coin.style.top = `${startY}px`;
+    
+    // Random direction and delay
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 40 + Math.random() * 60;
+    const midX = startX + Math.cos(angle) * distance;
+    const midY = startY + Math.sin(angle) * distance;
+
+    coin.style.setProperty("--mid-x", `${midX - startX}px`);
+    coin.style.setProperty("--mid-y", `${midY - startY}px`);
+    coin.style.setProperty("--dest-x", `${targetRect.left + (targetRect.width / 2) - startX}px`);
+    coin.style.setProperty("--dest-y", `${targetRect.top + (targetRect.height / 2) - startY}px`);
+    
+    const delay = Math.random() * 0.2;
+    coin.style.animationDelay = `${delay}s`;
+
+    document.body.appendChild(coin);
+
+    // Clean up
+    setTimeout(() => {
+      coin.remove();
+    }, 1200 + delay * 1000);
+  }
 }
 
 // ==========================================================================
@@ -1313,6 +1726,8 @@ if (mobileAddTaskBtn) {
   mobileAddTaskBtn.addEventListener("click", () => {
     const text = mobileTaskInput.value.trim();
     const category = mobileCategorySelect.value;
+    const mobilePrioritySelect = document.getElementById("mobilePrioritySelect");
+    const priority = mobilePrioritySelect ? mobilePrioritySelect.value : "Medium";
 
     if (text === "") return;
 
@@ -1320,6 +1735,7 @@ if (mobileAddTaskBtn) {
       id: Date.now(),
       text,
       category,
+      priority,
       completed: false,
       createdAt: getFormattedDate(new Date())
     };
@@ -1424,4 +1840,45 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAchievements();
   renderWeeklyStreak();
   updateDisplay();
+
+  // Setup dragover reordering for list container
+  const taskListContainer = document.getElementById("taskList");
+  if (taskListContainer) {
+    taskListContainer.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const draggingEl = document.querySelector(".dragging");
+      if (!draggingEl) return;
+
+      const afterElement = getDragAfterElement(taskListContainer, e.clientY);
+      if (afterElement == null) {
+        taskListContainer.appendChild(draggingEl);
+      } else {
+        taskListContainer.insertBefore(draggingEl, afterElement);
+      }
+    });
+
+    taskListContainer.addEventListener("drop", () => {
+      saveTaskOrder();
+    });
+  }
+
+  // Wire view toggles
+  const listViewBtn = document.getElementById("listViewBtn");
+  const boardViewBtn = document.getElementById("boardViewBtn");
+
+  if (listViewBtn && boardViewBtn) {
+    listViewBtn.addEventListener("click", () => {
+      currentView = "list";
+      listViewBtn.classList.add("active");
+      boardViewBtn.classList.remove("active");
+      renderTasks();
+    });
+
+    boardViewBtn.addEventListener("click", () => {
+      currentView = "board";
+      boardViewBtn.classList.add("active");
+      listViewBtn.classList.remove("active");
+      renderTasks();
+    });
+  }
 });
