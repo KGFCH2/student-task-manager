@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>TaskQuest • Gamified Productivity</title>
@@ -16,6 +17,22 @@
 
   <!-- REMIX ICON -->
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gamified Task Tracker - Level Up Your Productivity</title>
+
+  <!-- Google Fonts (Inter & Poppins) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Icon Libraries -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <!-- Chart.js for premium analytics visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -56,10 +73,16 @@
 
         <p>Focus Warrior ⚔️</p>
 
+
         <div class="level-box">
 
           <div class="level-info">
             <span>Level 5</span>
+
+        <div class="xp-container">
+          <div class="xp-info">
+            <span id="xpLevel">Level 3</span>
+
             <span id="xpText">120 / 300 XP</span>
           </div>
 
@@ -69,7 +92,8 @@
 
         </div>
 
-      </div>
+
+
 
       <!-- STATS -->
       <div class="stats-grid">
@@ -99,6 +123,7 @@
         </div>
 
       </div>
+
 
       <!-- ACHIEVEMENTS -->
       <div class="achievement-card">
@@ -145,14 +170,35 @@
             <i class="ri-restart-fill"></i>
           </button>
 
+      <!-- DYNAMIC BADGES -->
+      <div class="badges-card">
+        <div class="card-title">
+          <i class="ri-medal-fill"></i>
+          <span>Achievements</span>
         </div>
+        <div class="badges" id="badgesGrid">
+          <!-- Dynamically populated by JS -->
 
+        </div>
+      </div>
+
+      <!-- WEEKLY STREAK TRACKER -->
+      <div class="streak-tracker-card glass">
+        <div class="card-title">
+          <i class="ri-fire-fill"></i>
+          <span>Weekly Streak Tracker</span>
+        </div>
+        <div class="streak-days" id="streakDaysGrid">
+          <!-- Dynamically populated circular check-in cells by JS -->
+        </div>
+        <p class="streak-footer">Complete at least one task or study session daily to protect your streak!</p>
       </div>
 
     </aside>
 
-    <!-- MAIN -->
+    <!-- MAIN CONTENT -->
     <section class="main-content">
+
 
       <!-- TOP BAR -->
       <div class="topbar">
@@ -191,14 +237,41 @@
           Add Task
         </button>
 
+
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <button id="mobileSidebarToggle" class="burger-btn" aria-label="Toggle Sidebar Menu">
+            <i class="ri-menu-line"></i>
+          </button>
+          <div>
+            <h2>Dashboard</h2>
+            <p>Complete tasks and earn rewards ✨</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Accessibility Keyboard shortcuts visual hint -->
+          <span class="keyboard-hint" title="Keyboard Shortcuts: Alt+1 (Quests), Alt+2 (Stats), Alt+A (Focus Input), Alt+Space (Timer)">
+            <i class="ri-keyboard-line"></i> Shortcuts
+          </span>
+          
+          <div class="theme-selector-panel">
+            <button class="theme-dot active" data-theme="cosmic" aria-label="Cosmic Abyss Theme" style="background: linear-gradient(135deg, #a855f7, #06b6d4);"></button>
+            <button class="theme-dot" data-theme="aurora" aria-label="Aurora Borealis Theme" style="background: linear-gradient(135deg, #10b981, #2dd4bf);"></button>
+            <button class="theme-dot" data-theme="cyberpunk" aria-label="Neon Cyberpunk Theme" style="background: linear-gradient(135deg, #ec4899, #3b82f6);"></button>
+            <button class="theme-dot" data-theme="sunset" aria-label="Sunset Gold Theme" style="background: linear-gradient(135deg, #f59e0b, #f43f5e);"></button>
+          </div>
+        </div>
+
       </div>
 
-      <!-- FILTERS -->
-      <div class="filters">
-
-        <button class="filter-btn active" data-filter="All">
-          All
+      <!-- SLEEK TAB NAVIGATION -->
+      <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="quests">
+          <i class="ri-checkbox-multiple-line"></i> Quests & Workspace
         </button>
+
 
         <button class="filter-btn" data-filter="Theory">
           Theory
@@ -206,7 +279,13 @@
 
         <button class="filter-btn" data-filter="Assignment">
           Assignment
+
+        <button class="tab-btn" data-tab="analytics">
+          <i class="ri-bar-chart-2-line"></i> Analytics Hub
+
         </button>
+      </div>
+
 
         <button class="filter-btn" data-filter="Practical">
           Practical
@@ -216,7 +295,66 @@
           Revision
         </button>
 
+      <!-- TAB 1: QUESTS & TIMER -->
+      <div id="quests-tab" class="tab-content active">
+        <div class="workspace-layout">
+          <!-- Tasks Work area -->
+          <div class="workspace-main">
+            <!-- ADD TASK -->
+            <div class="task-box">
+              <input
+                type="text"
+                id="taskInput"
+                placeholder="Enter your next task..."
+              />
+
+              <select id="categorySelect">
+                <option value="Theory">📘 Theory</option>
+                <option value="Practical">🧪 Practical</option>
+                <option value="Assignment">📝 Assignment</option>
+                <option value="Revision">📖 Revision</option>
+              </select>
+
+              <button id="addTaskBtn">
+                <i class="ri-add-line"></i>Add Task
+              </button>
+            </div>
+
+            <!-- FILTERS -->
+            <div class="filters">
+              <button class="filter-btn active" data-filter="All">All</button>
+              <button class="filter-btn" data-filter="Theory">Theory</button>
+              <button class="filter-btn" data-filter="Practical">Practical</button>
+              <button class="filter-btn" data-filter="Assignment">Assignment</button>
+              <button class="filter-btn" data-filter="Revision">Revision</button>
+            </div>
+
+            <!-- TASKS -->
+            <div class="task-list" id="taskList">
+              <div class="empty-state">
+                <i class="ri-ghost-2-line"></i>
+                <h3>No Tasks Yet</h3>
+                <p>Add tasks and start your productivity adventure.</p>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Timer Sidebar -->
+          <div class="workspace-sidebar">
+            <div class="study-mode glass">
+              <h2 id="mode">Study Time</h2>
+              <div class="timer" id="timer">25:00</div>
+              <div class="buttons">
+                <button onclick="startTimer()"><i class="fa-solid fa-play"></i> Start</button>
+                <button onclick="pauseTimer()"><i class="fa-solid fa-pause"></i> Pause</button>
+                <button onclick="resetTimer()"><i class="fa-solid fa-rotate-right"></i> Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
 
       <!-- DAILY QUEST -->
       <div class="daily-quest">
@@ -237,19 +375,231 @@
 
         <div class="empty-state">
 
-          <i class="ri-ghost-2-line"></i>
+      <!-- TAB 2: ANALYTICS HUB -->
+      <div id="analytics-tab" class="tab-content hidden">
+        <!-- Stats summary row -->
+        <div class="analytics-stats-grid">
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper blue">
+              <i class="ri-time-line"></i>
+            </div>
+            <div class="stat-info">
+              <h3 id="analyticsTotalHours">0.0h</h3>
+              <p>Total Study Time</p>
+            </div>
+          </div>
+          
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper green">
+              <i class="ri-checkbox-circle-fill"></i>
+            </div>
+            <div class="stat-info">
+              <h3 id="analyticsCompletedQuests">0</h3>
+              <p>Completed Quests</p>
+            </div>
+          </div>
+          
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-fire-fill"></i>
+            </div>
+            <div class="stat-info">
+              <h3 id="analyticsStreak">0 days</h3>
+              <p>Active Streak</p>
+            </div>
+          </div>
+          
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper purple">
+              <i class="ri-percent-line"></i>
+            </div>
+            <div class="stat-info">
+              <h3 id="analyticsCompletionRate">0%</h3>
+              <p>Completion Rate</p>
+            </div>
+          </div>
+        </div>
 
-          <h3>No Tasks Yet</h3>
+
+        <!-- Charts grid -->
+        <div class="analytics-charts-grid">
+          <!-- Chart 1: Study hours -->
+          <div class="chart-card glass">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-bar-chart-fill"></i>
+                <h3>Study Hours</h3>
+              </div>
+              <div class="chart-toggle-group">
+                <button class="toggle-btn active" id="btnWeeklyStudy">Weekly</button>
+                <button class="toggle-btn" id="btnMonthlyStudy">Monthly</button>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="studyHoursChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Category Pie/Doughnut -->
+          <div class="chart-card glass">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-pie-chart-fill"></i>
+                <h3>Subject Category Mastery</h3>
+              </div>
+            </div>
+            <div class="chart-wrapper pie-chart-wrapper">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+
 
           <p>Add tasks and begin your productivity adventure.</p>
 
-        </div>
+        <!-- Heatmap & Subject detail grid -->
+        <div class="analytics-heatmap-layout">
+          <!-- Github style Heatmap -->
+          <div class="chart-card glass heatmap-card">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-calendar-todo-fill"></i>
+                <h3>Consistency Heatmap</h3>
+              </div>
+              <p class="subtitle">Daily completions and study sessions (15-week view)</p>
+            </div>
+            <div class="heatmap-legend-wrapper">
+              <div class="heatmap-container" id="heatmapContainer"></div>
+              <div class="heatmap-legend">
+                <span>Less</span>
+                <div class="legend-box level-0"></div>
+                <div class="legend-box level-1"></div>
+                <div class="legend-box level-2"></div>
+                <div class="legend-box level-3"></div>
+                <div class="legend-box level-4"></div>
+                <span>More</span>
+              </div>
+            </div>
+          </div>
 
+
+          <!-- Subject completions -->
+          <div class="chart-card glass subject-stats-card">
+            <div class="chart-header">
+              <div class="header-left">
+                <i class="ri-medal-2-fill"></i>
+                <h3>Quest Mastery</h3>
+              </div>
+              <p class="subtitle">Completed vs. Total tasks per category</p>
+            </div>
+            <div class="subject-progress-list" id="subjectProgressList">
+              <!-- Dynamically populated by JavaScript -->
+            </div>
+          </div>
+        </div>
       </div>
 
     </section>
 
+
   </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION DOCK -->
+  <div class="mobile-bottom-dock glass">
+    <button class="dock-btn active" data-tab="quests" aria-label="Open Quests workspace">
+      <i class="ri-checkbox-multiple-line"></i>
+      <span>Quests</span>
+    </button>
+    
+    <button class="dock-btn-quick" id="mobileQuickAddBtn" aria-label="Quick Add Quest">
+      <i class="ri-add-line"></i>
+    </button>
+    
+    <button class="dock-btn" data-tab="analytics" aria-label="Open Stats dashboard">
+      <i class="ri-bar-chart-2-line"></i>
+      <span>Stats</span>
+    </button>
+  </div>
+
+  <!-- MOBILE QUICK ADD DRAWER -->
+  <div class="mobile-add-drawer-overlay" id="mobileAddDrawerOverlay"></div>
+  <div class="mobile-add-drawer glass" id="mobileAddDrawer">
+    <div class="drawer-header">
+      <div class="drawer-bar"></div>
+      <h3>Quick Add Quest</h3>
+      <button id="closeDrawerBtn" aria-label="Close form"><i class="ri-close-line"></i></button>
+    </div>
+    
+    <div class="drawer-body">
+      <input
+        type="text"
+        id="mobileTaskInput"
+        placeholder="What needs to be done?"
+        aria-label="New task name"
+      />
+
+      <select id="mobileCategorySelect" aria-label="Task category">
+        <option value="Theory">📘 Theory</option>
+        <option value="Practical">🧪 Practical</option>
+        <option value="Assignment">📝 Assignment</option>
+        <option value="Revision">📖 Revision</option>
+      </select>
+
+      <button id="mobileAddTaskBtn">
+        <i class="ri-add-line"></i>Create Quest
+      </button>
+    </div>
+  </div>
+
+  <!-- CONFETTI DUST EFFECT CONTAINER -->
+  <div class="confetti-container" id="confettiContainer"></div>
+
+  <!-- LEVEL UP POPUP WIDGET -->
+  <div class="popup-overlay" id="levelUpPopupOverlay"></div>
+  <div class="popup-card glass level-up-card" id="levelUpPopup">
+    <div class="popup-glow"></div>
+    <div class="popup-badge">🏆</div>
+    <h2>LEVEL UP!</h2>
+    <p class="popup-sub">You have reached <span id="popupLevelText">Level 4</span>!</p>
+    <div class="popup-rewards-list">
+      <div class="reward-item">
+        <i class="ri-money-dollar-circle-fill"></i>
+        <span>+50 Coins Reward</span>
+      </div>
+      <div class="reward-item">
+        <i class="ri-sparkling-fill"></i>
+        <span>+100 XP Bonus</span>
+      </div>
+    </div>
+    <button class="popup-claim-btn" id="claimLevelBtn">Claim Rewards ✨</button>
+  </div>
+
+  <!-- CUMULATIVE FOCUS MILESTONE POPUP WIDGET -->
+  <div class="popup-overlay" id="milestonePopupOverlay"></div>
+  <div class="popup-card glass milestone-card" id="milestonePopup">
+    <div class="popup-glow"></div>
+    <div class="popup-badge">🚀</div>
+    <h2>MILESTONE UNLOCKED!</h2>
+    <p class="popup-sub" id="milestoneTitle">Focus Elite</p>
+    <p class="popup-desc" id="milestoneDesc">Accumulated 60 minutes of cumulative study time!</p>
+    <div class="popup-rewards-list">
+      <div class="reward-item">
+        <i class="ri-medal-fill"></i>
+        <span>+100 Coins Reward</span>
+      </div>
+    </div>
+    <button class="popup-claim-btn" id="claimMilestoneBtn">Awesome!</button>
+  </div>
+
+
+  <!-- FLOATING ACHIEVEMENT TOAST ALERT -->
+  <div class="achievement-toast glass" id="achievementToast">
+    <div class="toast-icon">🏆</div>
+    <div class="toast-content">
+      <h4>Achievement Unlocked!</h4>
+      <p id="toastAchievementName">Focus Master</p>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 
