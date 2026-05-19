@@ -20,6 +20,7 @@ const tabContents = document.querySelectorAll(".tab-content");
 // Global states
 let tasks = [];
 let currentFilter = "All";
+let searchQuery = "";
 let coins = 0;
 let streak = 0;
 let xp = 120;
@@ -406,6 +407,9 @@ function renderTasks() {
   let filteredTasks = tasks;
   if (currentFilter !== "All") {
     filteredTasks = tasks.filter(task => task.category === currentFilter);
+  }
+  if (searchQuery) {
+    filteredTasks = filteredTasks.filter(task => task.text.toLowerCase().includes(searchQuery));
   }
 
   if (filteredTasks.length === 0) {
@@ -1355,6 +1359,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Request browser notification permissions on startup
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
+  }
+
+  // Search input logic
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderTasks();
+    });
   }
 
   loadData();
