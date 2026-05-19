@@ -20,7 +20,11 @@ const tabContents = document.querySelectorAll(".tab-content");
 // Global states
 let tasks = [];
 let currentFilter = "All";
+
+let searchQuery = "";
+
 let currentView = "list"; // "list" or "board"
+
 let coins = 0;
 let streak = 0;
 let xp = 120;
@@ -521,7 +525,10 @@ function addTask() {
   const text = taskInput.value.trim();
   const category = categorySelect.value;
 
+
+
   const priority = document.getElementById("prioritySelect").value;
+
   const deadlineInput = document.getElementById("deadlineInput");
   const deadline = deadlineInput.value;
 
@@ -567,11 +574,13 @@ function addTask() {
 
   updateDeadlineAlerts();
 
+
   // Notify user to complete the new task ASAP
   sendNotification("Quest Assigned", `COMPLETE ${text} TASK ASAP`);
 
   // Show UI popup notification
   showTaskPopup(`COMPLETE ${text.toUpperCase()} TASK ASAP`);
+
 
   announce(`Task added: "${text}". Category: ${category}, Priority: ${priority}.`);
 
@@ -584,6 +593,9 @@ function createTaskEl(task) {
   div.setAttribute("data-id", task.id);
   if (task.completed) {
     div.classList.add("completed");
+  }
+  if (searchQuery) {
+    filteredTasks = filteredTasks.filter(task => task.text.toLowerCase().includes(searchQuery));
   }
 
   const pri = task.priority || "Medium";
@@ -627,15 +639,21 @@ function createTaskEl(task) {
       streak += 1;
       xp += 20;
 
+
+
     div.innerHTML = `
       <div class="task-left">
         <div class="check-btn" tabindex="0" aria-label="Toggle completed task"></div>
         <div>
           <h3 class="task-title">${escapeHtml(task.text)}</h3>
+
+          <p class="task-category">${getCategoryEmoji(task.category)} ${task.category}</p>
+
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
             <span class="priority-badge ${(task.priority || 'Medium').toLowerCase()}">${task.priority || 'Medium'}</span>
             <p class="task-category" style="margin: 0;">${getCategoryEmoji(task.category)} ${task.category}</p>
           </div>
+
           ${task.deadline ? `<p class="task-deadline ${getDeadlineUrgency(task.deadline)}"><i class="ri-time-line"></i> ${formatDeadlineDisplay(task.deadline)}</p>` : ''}
         </div>
       </div>
@@ -656,6 +674,7 @@ function createTaskEl(task) {
       coins = Math.max(0, coins - 10);
       streak = Math.max(0, streak - 1);
       xp = Math.max(0, xp - 20);
+>>>>>>> main
 
 
       if (analyticsData.completedTasksPerDay[todayStr]) {
@@ -1913,10 +1932,12 @@ function updateDeadlineAlerts() {
       alertDiv.classList.add("warning");
     }
 
+
     // Send browser notification for tasks reaching critical urgency
     if (urgencyData.urgency === "critical") {
       sendNotification("Urgent Deadline!", `COMPLETE ${task.text} TASK ASAP`);
     }
+
 
     const icon = urgencyData.urgency === "critical" ? "ri-alarm-warning-fill" : "ri-time-line";
     
@@ -2173,6 +2194,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Request browser notification permissions on startup
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
+  }
+
+  // Search input logic
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderTasks();
+    });
   }
 
   loadData();

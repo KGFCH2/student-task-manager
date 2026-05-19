@@ -135,6 +135,32 @@
     <!-- MAIN CONTENT -->
     <section class="main-content">
 
+
+
+      <!-- TOP BAR -->
+      <div class="topbar">
+
+        <div>
+          <h2>Dashboard</h2>
+          <p>Conquer your goals one task at a time ✨</p>
+        </div>
+
+        <button id="themeToggle">
+          <i class="ri-moon-clear-fill"></i>
+        </button>
+
+      </div>
+
+    <!-- MAIN CONTENT -->
+    <section class="main-content">
+
+      <!-- TOP BAR -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <h2>Dashboard</h2>
+          <p>Conquer your goals one task at a time ✨</p>
+
+
       <!-- TOP BAR -->
       <div class="topbar">
         <div class="topbar-left">
@@ -145,12 +171,16 @@
           <button class="burger-btn" id="mobileSidebarToggle" aria-label="Toggle Sidebar Menu">
             <i class="ri-menu-line"></i>
           </button>
-          <div>
-            <h2>Dashboard</h2>
-            <p>Conquer your goals one task at a time ✨</p>
+          <div class="topbar-brand">
+            <div class="topbar-logo"><i class="ri-gamepad-fill"></i></div>
+            <div>
+              <h2>TaskQuest</h2>
+              <p class="mobile-hidden">Conquer your goals one task at a time ✨</p>
+            </div>
           </div>
 
         </div>
+
         <div class="topbar-right">
           <div class="theme-selector-panel">
             <button class="theme-dot active" data-theme="cosmic" aria-label="Cosmic Theme" style="background: linear-gradient(135deg, #a855f7, #06b6d4);"></button>
@@ -195,11 +225,14 @@
                 <option value="Revision">📖 Revision</option>
               </select>
 
+
+
               <select id="prioritySelect" title="Select priority level">
                 <option value="High">🚩 High</option>
                 <option value="Medium" selected>🔸 Medium</option>
                 <option value="Low">🔹 Low</option>
               </select>
+
               <input
                 type="datetime-local"
                 id="deadlineInput"
@@ -229,6 +262,12 @@
               </button>
             </div>
 
+            <!-- SEARCH BAR -->
+            <div class="search-box glass">
+              <i class="ri-search-line"></i>
+              <input type="text" id="searchInput" placeholder="Search quests by title...">
+            </div>
+
             <!-- FILTERS -->
             <div class="filters">
               <button class="filter-btn active" data-filter="All">All</button>
@@ -240,6 +279,7 @@
               <button class="filter-btn" id="sortByDeadline" title="Sort by earliest deadline">
                 <i class="ri-time-line"></i> Due Soon
               </button>
+
             </div>
 
             <!-- DEADLINE ALERTS -->
@@ -247,6 +287,16 @@
 
 
             </div>
+
+
+            </div>
+
+            <!-- DEADLINE ALERTS -->
+            <div class="deadline-alerts" id="deadlineAlerts"></div>
+
+
+            </div>
+
 
 
             <!-- DAILY QUEST -->
@@ -288,6 +338,18 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- QUICK BRAIN DUMP SCRATCHPAD -->
+        <div class="scratchpad-card glass">
+          <div class="scratchpad-header">
+            <div class="scratchpad-title">
+              <i class="ri-sticky-note-line"></i>
+              <span>Quick Brain Dump</span>
+            </div>
+            <span class="save-status" id="scratchpadStatus">Autosaved to LocalStorage</span>
+          </div>
+          <textarea id="scratchpadInput" placeholder="Jot down quick thoughts, links, ideas, or temporary tasks here..." aria-label="Scratchpad for quick thoughts"></textarea>
         </div>
       </div>
 
@@ -406,7 +468,13 @@
       <!-- TAB 2: ANALYTICS HUB -->
       <div id="analytics-tab" class="tab-content hidden">
 
+
+
+      <!-- TAB 2: ANALYTICS HUB -->
+      <div id="analytics-tab" class="tab-content hidden">
+
         <!-- Consistency Heatmap & Mastery Progress List -->
+
 
         <div class="analytics-heatmap-layout">
           <!-- Github style Heatmap -->
@@ -497,6 +565,31 @@
           </div>
         </div>
       </div>
+
+      <!-- APP FOOTER -->
+      <footer class="app-footer">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="logo-icon"><i class="ri-gamepad-line"></i></div>
+            <div class="logo-text">
+              <h4>TaskQuest</h4>
+              <p>Conquer your goals one task at a time.</p>
+            </div>
+          </div>
+          <div class="footer-links">
+            <a href="#" aria-label="GitHub Repository"><i class="ri-github-fill"></i></a>
+            <a href="#" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
+            <a href="#" aria-label="Discord"><i class="ri-discord-fill"></i></a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 TaskQuest. All rights reserved.</p>
+          <div class="footer-legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+          </div>
+        </div>
+      </footer>
 
     </section>
 
@@ -690,4 +783,8 @@
 
 
 </html>
+
+
+</html>
+
 
