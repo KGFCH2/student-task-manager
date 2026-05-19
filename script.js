@@ -25,6 +25,7 @@ let coins = 0;
 let streak = 0;
 let xp = 120;
 let currentStudyView = "weekly"; // "weekly" or "monthly"
+let profile = { name: "Student Hero", gender: "Male", class: "Class 10" };
 
 // Chart.js instances
 let studyChartInstance = null;
@@ -199,6 +200,16 @@ function loadData() {
   } else {
     initializeAnalyticsData();
   }
+
+  // Load profile
+  const savedProfile = localStorage.getItem("quests_profile");
+  if (savedProfile) {
+    try {
+      profile = JSON.parse(savedProfile);
+    } catch (e) {
+      profile = { name: "Student Hero", gender: "Male", class: "Class 10" };
+    }
+  }
 }
 
 function saveData() {
@@ -207,6 +218,7 @@ function saveData() {
   localStorage.setItem("streak", streak);
   localStorage.setItem("xp", xp);
   localStorage.setItem("quests_analytics", JSON.stringify(analyticsData));
+  localStorage.setItem("quests_profile", JSON.stringify(profile));
 }
 
 // Generate beautiful visual mock data for past 15 days if empty
@@ -2179,6 +2191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAchievements();
   renderWeeklyStreak();
   updateDisplay();
+  renderProfile();
 
   initDeadlineUpdater();
 
@@ -2228,21 +2241,79 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
-// Feature: UI Pop-up Notification
-let taskPopupTimeout = null;
-function showTaskPopup(message) {
-  const popup = document.getElementById("taskPopup");
-  const msgText = document.getElementById("taskPopupMessage");
-  if (!popup || !msgText) return;
-  
-  // Clear existing timeout if user adds tasks rapidly
-  if (taskPopupTimeout) clearTimeout(taskPopupTimeout);
-  
-  msgText.textContent = message;
-  popup.classList.add("show");
-  
-  taskPopupTimeout = setTimeout(() => {
-    popup.classList.remove("show");
-    taskPopupTimeout = null;
-  }, 4000);
+// ==========================================================================
+// 15. PROFILE MANAGEMENT & MODAL
+// ==========================================================================
+
+function renderProfile() {
+  const nameEl = document.getElementById("profileNameDisplay");
+  const classEl = document.getElementById("profileClassDisplay");
+  const avatarImg = document.getElementById("profileAvatarImg");
+  const avatarPlaceholder = document.getElementById("profileIconPlaceholder");
+
+  if (nameEl) nameEl.textContent = profile.name || "Student Hero";
+  if (classEl) classEl.textContent = `${profile.class || "Class 10"} • Focus Warrior ⚔️`;
+
+  if (avatarImg && avatarPlaceholder) {
+    if (profile.gender === "Female") {
+      avatarImg.src = "female_avatar.svg";
+      avatarImg.style.display = "block";
+      avatarPlaceholder.style.display = "none";
+    } else {
+      avatarImg.src = "male_avatar.svg";
+      avatarImg.style.display = "block";
+      avatarPlaceholder.style.display = "none";
+    }
+  }
 }
+
+// Open Profile Modal
+document.getElementById("profileCard")?.addEventListener("click", () => {
+  const overlay = document.getElementById("profileModalOverlay");
+  const modal = document.getElementById("profileModal");
+  if (!overlay || !modal) return;
+
+  // Populate form with current data
+  document.getElementById("profileInputName").value = profile.name || "";
+  document.getElementById("profileInputClass").value = profile.class || "";
+  document.getElementById("profileInputGender").value = profile.gender || "Male";
+
+  overlay.classList.add("active");
+  modal.classList.add("active");
+  enableFocusTrap(modal);
+});
+
+// Close Profile Modal
+function closeProfileModal() {
+  document.getElementById("profileModalOverlay")?.classList.remove("active");
+  document.getElementById("profileModal")?.classList.remove("active");
+  disableFocusTrap();
+}
+
+document.getElementById("closeProfileModalBtn")?.addEventListener("click", closeProfileModal);
+document.getElementById("profileModalOverlay")?.addEventListener("click", closeProfileModal);
+
+// Save Profile
+document.getElementById("saveProfileBtn")?.addEventListener("click", (e) => {
+  const nameInput = document.getElementById("profileInputName");
+  const classInput = document.getElementById("profileInputClass");
+  const genderInput = document.getElementById("profileInputGender");
+
+  const newName = nameInput.value.trim();
+  if (newName === "") {
+    nameInput.classList.add("input-invalid");
+    announce("Please enter your name.");
+    setTimeout(() => nameInput.classList.remove("input-invalid"), 400);
+    return;
+  }
+
+  profile.name = newName;
+  profile.class = classInput.value.trim();
+  profile.gender = genderInput.value;
+
+  saveData();
+  renderProfile();
+  closeProfileModal();
+  triggerConfetti();
+  announce("Profile updated successfully.");
+});

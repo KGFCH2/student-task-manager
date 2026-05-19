@@ -44,12 +44,16 @@
       </div>
 
       <!-- PROFILE CARD -->
-      <div class="profile-card">
-        <div class="avatar">
-          <i class="ri-user-3-fill"></i>
+      <div class="profile-card" id="profileCard" style="cursor: pointer;" title="Edit Profile">
+        <div class="avatar" id="profileAvatar">
+          <img id="profileAvatarImg" src="male_avatar.svg" alt="Profile Photo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: none;">
+          <i id="profileIconPlaceholder" class="ri-user-3-fill"></i>
+          <div class="avatar-edit-overlay">
+            <i class="ri-pencil-fill"></i>
+          </div>
         </div>
-        <h2>Student Hero</h2>
-        <p>Focus Warrior ⚔️</p>
+        <h2 id="profileNameDisplay">Student Hero</h2>
+        <p id="profileClassDisplay">Class 10 • Focus Warrior ⚔️</p>
 
         <div class="xp-container">
           <div class="xp-info">
@@ -167,9 +171,12 @@
           <button class="burger-btn" id="mobileSidebarToggle" aria-label="Toggle Sidebar Menu">
             <i class="ri-menu-line"></i>
           </button>
-          <div>
-            <h2>Dashboard</h2>
-            <p>Conquer your goals one task at a time ✨</p>
+          <div class="topbar-brand">
+            <div class="topbar-logo"><i class="ri-gamepad-fill"></i></div>
+            <div>
+              <h2>TaskQuest</h2>
+              <p class="mobile-hidden">Conquer your goals one task at a time ✨</p>
+            </div>
           </div>
 
         </div>
@@ -325,6 +332,18 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- QUICK BRAIN DUMP SCRATCHPAD -->
+        <div class="scratchpad-card glass">
+          <div class="scratchpad-header">
+            <div class="scratchpad-title">
+              <i class="ri-sticky-note-line"></i>
+              <span>Quick Brain Dump</span>
+            </div>
+            <span class="save-status" id="scratchpadStatus">Autosaved to LocalStorage</span>
+          </div>
+          <textarea id="scratchpadInput" placeholder="Jot down quick thoughts, links, ideas, or temporary tasks here..." aria-label="Scratchpad for quick thoughts"></textarea>
         </div>
       </div>
 
@@ -536,6 +555,31 @@
         </div>
       </div>
 
+      <!-- APP FOOTER -->
+      <footer class="app-footer">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="logo-icon"><i class="ri-gamepad-line"></i></div>
+            <div class="logo-text">
+              <h4>TaskQuest</h4>
+              <p>Conquer your goals one task at a time.</p>
+            </div>
+          </div>
+          <div class="footer-links">
+            <a href="#" aria-label="GitHub Repository"><i class="ri-github-fill"></i></a>
+            <a href="#" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
+            <a href="#" aria-label="Discord"><i class="ri-discord-fill"></i></a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 TaskQuest. All rights reserved.</p>
+          <div class="footer-legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+          </div>
+        </div>
+      </footer>
+
     </section>
 
 
@@ -687,11 +731,35 @@
     </div>
   </div>
 
-
-  <!-- TASK ADDED POPUP -->
-  <div id="taskPopup" class="task-popup glass">
-    <i class="ri-notification-3-line"></i>
-    <p id="taskPopupMessage">COMPLETE TASK ASAP</p>
+  <!-- PROFILE EDIT MODAL -->
+  <div class="popup-overlay" id="profileModalOverlay"></div>
+  <div class="popup-card glass profile-modal" id="profileModal">
+    <button class="close-modal-btn" id="closeProfileModalBtn" aria-label="Close edit profile modal"><i class="ri-close-line"></i></button>
+    <div class="popup-glow" style="background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(0,0,0,0) 70%);"></div>
+    <h2>Edit Profile</h2>
+    <p class="popup-sub">Customize your details</p>
+    
+    <div class="profile-form" style="text-align: left; margin-top: 15px;">
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label for="profileInputName" style="display: block; font-size: 13px; color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Name</label>
+        <input type="text" id="profileInputName" placeholder="Enter your name" style="width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 14px; color: var(--text); outline: none; font-size: 14px;" />
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 18px;">
+        <label for="profileInputClass" style="display: block; font-size: 13px; color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Class / Grade</label>
+        <input type="text" id="profileInputClass" placeholder="e.g. Class 10" style="width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 14px; color: var(--text); outline: none; font-size: 14px;" />
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label for="profileInputGender" style="display: block; font-size: 13px; color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Gender</label>
+        <select id="profileInputGender" style="width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 14px; color: var(--text); outline: none; font-size: 14px; font-family: inherit;">
+          <option value="Male">Male ♂️</option>
+          <option value="Female">Female ♀️</option>
+        </select>
+      </div>
+      
+      <button class="popup-claim-btn" id="saveProfileBtn">Save Profile ✨</button>
+    </div>
   </div>
 
   <!-- ACCESSIBILITY ANNOUNCER -->
