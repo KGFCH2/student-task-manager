@@ -684,6 +684,21 @@
   <!-- ACCESSIBILITY ANNOUNCER -->
   <div id="srAnnouncement" class="sr-only" aria-live="polite"></div>
 
+  <!-- BREAK REMINDER TOAST POPUP -->
+  <div class="break-toast" id="breakToast" role="alert" aria-live="assertive">
+    <div class="break-toast-inner">
+      <div class="break-toast-emoji" id="breakToastEmoji">☕</div>
+      <div class="break-toast-body">
+        <h4 class="break-toast-title">Time for a Break!</h4>
+        <p class="break-toast-msg" id="breakToastMsg">You've been studying for 25 minutes. Step away, stretch, and hydrate!</p>
+      </div>
+      <button class="break-toast-close" id="breakToastClose" aria-label="Dismiss break reminder">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+    <div class="break-toast-progress" id="breakToastProgress"></div>
+  </div>
+
 
   
 

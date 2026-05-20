@@ -1430,7 +1430,7 @@ body.light .topbar-left h2 {
 .workspace-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .workspace-sidebar .study-mode {
@@ -4073,4 +4073,409 @@ body.light .drag-handle:hover {
     padding: 18px 16px 14px;
   }
 }
+
+/* ==========================================================================
+   BREAK REMINDER CARD & TOAST
+   ========================================================================== */
+
+/* --- Card --- */
+.break-reminder-card {
+  position: relative;
+  border-radius: 22px;
+  padding: 20px 18px 16px;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.break-reminder-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  border-radius: 22px 22px 0 0;
+}
+
+/* --- Header --- */
+.break-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.break-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.break-title-wrap i {
+  font-size: 18px;
+  color: #10b981;
+}
+
+.break-status-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-light, var(--textLight));
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+.break-status-badge.active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+/* --- Interval Row --- */
+.break-interval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.break-interval-row label {
+  font-size: 12.5px;
+  color: var(--text-light, var(--textLight));
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.break-select-wrap {
+  position: relative;
+}
+
+.break-select-wrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 7px 30px 7px 12px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%239ca3af'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.break-select-wrap select:focus {
+  border-color: #10b981;
+}
+
+/* --- Ring Countdown --- */
+.break-countdown-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.break-ring-container {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.break-ring {
+  width: 90px;
+  height: 90px;
+  transform: rotate(-90deg);
+  position: absolute;
+  top: 0; left: 0;
+}
+
+.break-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 5;
+}
+
+.break-ring-fill {
+  fill: none;
+  stroke: url(#breakGradient);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 163.4;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.break-time-display {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Controls --- */
+.break-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.break-ctrl-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.break-ctrl-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.break-start-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.break-pause-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.break-reset-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.break-ctrl-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* --- Sound Toggle Row --- */
+.break-sound-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-light, var(--textLight));
+}
+
+.break-sound-row i {
+  font-size: 15px;
+  color: #06b6d4;
+}
+
+.break-sound-row span {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* Toggle Switch */
+.break-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.break-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.break-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.break-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+}
+
+.break-toggle-switch input:checked + .break-toggle-track {
+  background: rgba(16, 185, 129, 0.35);
+  border-color: #10b981;
+}
+
+.break-toggle-switch input:checked + .break-toggle-track::after {
+  transform: translateX(16px);
+  background: #10b981;
+}
+
+/* ==========================================================================
+   BREAK REMINDER TOAST
+   ========================================================================== */
+
+.break-toast {
+  position: fixed;
+  bottom: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, 92vw);
+  background: var(--card);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(16, 185, 129, 0.1);
+  backdrop-filter: blur(30px);
+  overflow: hidden;
+  z-index: 9999;
+  transition: bottom 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.4s ease;
+  opacity: 0;
+}
+
+.break-toast.show {
+  bottom: 30px;
+  opacity: 1;
+}
+
+@media (max-width: 1024px) {
+  .break-toast.show {
+    bottom: 110px; /* above mobile nav */
+  }
+}
+
+.break-toast-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 16px 14px;
+}
+
+.break-toast-emoji {
+  font-size: 36px;
+  line-height: 1;
+  animation: breakBounce 1s ease-in-out infinite alternate;
+  flex-shrink: 0;
+}
+
+@keyframes breakBounce {
+  from { transform: translateY(0) rotate(-5deg); }
+  to   { transform: translateY(-5px) rotate(5deg); }
+}
+
+.break-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.break-toast-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #10b981;
+  margin-bottom: 4px;
+}
+
+.break-toast-msg {
+  font-size: 12.5px;
+  color: var(--text-light, var(--textLight));
+  line-height: 1.5;
+}
+
+.break-toast-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-light, var(--textLight));
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.break-toast-close:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Auto-dismiss progress bar */
+.break-toast-progress {
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform linear;
+}
+
+/* Light / Sunset theme tweaks */
+[data-theme="sunset"] .break-reminder-card,
+[data-theme="sunset"] .break-toast {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+[data-theme="sunset"] .break-select-wrap select {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+[data-theme="sunset"] .break-status-badge {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="sunset"] .break-ctrl-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text);
+}
+
+[data-theme="sunset"] .break-ring-bg {
+  stroke: rgba(0, 0, 0, 0.06);
+}
+
 
