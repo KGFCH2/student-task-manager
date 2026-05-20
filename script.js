@@ -647,6 +647,8 @@ function createTaskEl(task) {
       streak = Math.max(0, streak - 1);
       xp = Math.max(0, xp - 20);
 
+
+
       if (analyticsData.completedTasksPerDay[todayStr]) {
         analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
       }
@@ -2307,3 +2309,22 @@ document.getElementById("saveProfileBtn")?.addEventListener("click", (e) => {
   triggerConfetti();
   announce("Profile updated successfully.");
 });
+// Apply formatting commands
+function formatDoc(cmd) {
+  document.execCommand(cmd, false, null);
+}
+
+// Save notes to localStorage
+function saveNotes() {
+  const content = document.getElementById("notesEditor").innerHTML;
+  localStorage.setItem("studyNotes", content);
+  alert("Notes saved!");
+}
+
+// Load notes on page load
+window.onload = function() {
+  const saved = localStorage.getItem("studyNotes");
+  if (saved) {
+    document.getElementById("notesEditor").innerHTML = saved;
+  }
+};
