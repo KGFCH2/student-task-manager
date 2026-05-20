@@ -28,7 +28,7 @@ let coins = 0;
 let streak = 0;
 let xp = 120;
 let currentStudyView = "weekly";
-let profile = { name: "Student Hero", gender: "Male", class: "Class 10" };
+let profile = { name: "Student Hero", gender: "Male", class: "Class 10", title: "Focus Warrior ⚔️" };
 
 // Chart.js instances
 let studyChartInstance = null;
@@ -209,8 +209,9 @@ function loadData() {
   if (savedProfile) {
     try {
       profile = JSON.parse(savedProfile);
+      if (!profile.title) profile.title = "Focus Warrior ⚔️";
     } catch (e) {
-      profile = { name: "Student Hero", gender: "Male", class: "Class 10" };
+      profile = { name: "Student Hero", gender: "Male", class: "Class 10", title: "Focus Warrior ⚔️" };
     }
   }
 }
@@ -965,32 +966,6 @@ function updateStats() {
   if (completedTasks) completedTasks.textContent = tasks.filter(task => task.completed).length;
   updateDailyQuest();
 }
-
-function updateDailyQuest() {
-  const today = getFormattedDate(new Date());
-  const completedToday = tasks.filter(t => t.completed && t.createdAt && t.createdAt.startsWith(today)).length;
-  const questText = document.getElementById("questText");
-  if (questText) {
-    questText.textContent = `${completedToday} / 5`;
-  }
-}
-
-function showTaskPopup(message) {
-  const popup = document.createElement("div");
-  popup.className = "task-popup";
-  popup.innerHTML = `
-    <i class="ri-sparkling-fill" style="color: var(--secondary)"></i>
-    <p>${message}</p>
-  `;
-  document.body.appendChild(popup);
-  
-  setTimeout(() => popup.classList.add("show"), 100);
-  setTimeout(() => {
-    popup.classList.remove("show");
-    setTimeout(() => popup.remove(), 600);
-  }, 4000);
-}
-
 function updateGamification() {
   const pointsEl = document.getElementById("coins");
   if (pointsEl) pointsEl.textContent = coins;
@@ -2342,7 +2317,7 @@ function renderProfile() {
   const avatarPlaceholder = document.getElementById("profileIconPlaceholder");
 
   if (nameEl) nameEl.textContent = profile.name || "Student Hero";
-  if (classEl) classEl.textContent = `${profile.class || "Class 10"} • Focus Warrior ⚔️`;
+  if (classEl) classEl.textContent = `${profile.class || "Class 10"} • ${profile.title}`;
 
   if (avatarImg && avatarPlaceholder) {
     if (profile.gender === "Female") {
@@ -2367,6 +2342,7 @@ document.getElementById("profileCard")?.addEventListener("click", () => {
   document.getElementById("profileInputName").value = profile.name || "";
   document.getElementById("profileInputClass").value = profile.class || "";
   document.getElementById("profileInputGender").value = profile.gender || "Male";
+  document.getElementById("profileInputTitle").value = profile.title || "Focus Warrior ⚔️";
 
   overlay.classList.add("active");
   modal.classList.add("active");
@@ -2383,11 +2359,17 @@ function closeProfileModal() {
 document.getElementById("closeProfileModalBtn")?.addEventListener("click", closeProfileModal);
 document.getElementById("profileModalOverlay")?.addEventListener("click", closeProfileModal);
 
+document.getElementById("editProfileSidebarBtn")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("profileCard").click();
+});
+
 // Save Profile
 document.getElementById("saveProfileBtn")?.addEventListener("click", (e) => {
   const nameInput = document.getElementById("profileInputName");
   const classInput = document.getElementById("profileInputClass");
   const genderInput = document.getElementById("profileInputGender");
+  const titleInput = document.getElementById("profileInputTitle");
 
   const newName = nameInput.value.trim();
   if (newName === "") {
@@ -2400,12 +2382,38 @@ document.getElementById("saveProfileBtn")?.addEventListener("click", (e) => {
   profile.name = newName;
   profile.class = classInput.value.trim();
   profile.gender = genderInput.value;
+  profile.title = titleInput.value;
 
   saveData();
   renderProfile();
   closeProfileModal();
   triggerConfetti();
   announce("Profile updated successfully.");
+});
+
+// Apply formatting commands
+function formatDoc(cmd) {
+  document.execCommand(cmd, false, null);
+}
+
+// Load notes on page load
+window.addEventListener('load', () => {
+  const savedNotes = localStorage.getItem("studyNotes");
+  const notesEditor = document.getElementById("notesEditor");
+  if (notesEditor && savedNotes) {
+    notesEditor.innerHTML = savedNotes;
+  }
+  
+  // Dynamic Greeting for the Profile
+  const nameEl = document.getElementById("profileNameDisplay");
+  if (nameEl && profile.name) {
+    const hour = new Date().getHours();
+    let greeting = "Ready for a quest?";
+    if (hour < 12) greeting = "Good Morning, Hero!";
+    else if (hour < 18) greeting = "Good Afternoon, Warrior!";
+    else greeting = "Good Evening, Scholar!";
+    // Temporarily show greeting or just keep name
+  }
 });
 
 /**
@@ -2419,44 +2427,9 @@ function showTaskPopup(message) {
     <p>${message}</p>
   `;
   document.body.appendChild(popup);
-  
-  // Trigger animation
   setTimeout(() => popup.classList.add("show"), 100);
-  
-  // Auto-remove
   setTimeout(() => {
     popup.classList.remove("show");
     setTimeout(() => popup.remove(), 600);
   }, 3500);
 }
-
-// Apply formatting commands
-function formatDoc(cmd) {
-  document.execCommand(cmd, false, null);
-}
-
-// Save notes to localStorage
-function saveNotes() {
-  const content = document.getElementById("notesEditor").innerHTML;
-  localStorage.setItem("studyNotes", content);
-  alert("Notes saved!");
-}
-
-// Load notes on page load
-window.onload = function() {
-  // Update Dynamic Greeting
-  const greetingEl = document.getElementById("dynamicGreeting");
-  if (greetingEl) {
-    const hour = new Date().getHours();
-    let greeting = "Ready for a quest?";
-    if (hour < 12) greeting = "Good Morning, Hero!";
-    else if (hour < 18) greeting = "Good Afternoon, Warrior!";
-    else greeting = "Good Evening, Scholar!";
-    greetingEl.textContent = greeting;
-  }
-
-  const saved = localStorage.getItem("studyNotes");
-  if (saved) {
-    document.getElementById("notesEditor").innerHTML = saved;
-  }
-};
