@@ -647,6 +647,8 @@ function createTaskEl(task) {
       streak = Math.max(0, streak - 1);
       xp = Math.max(0, xp - 20);
 
+
+
       if (analyticsData.completedTasksPerDay[todayStr]) {
         analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
       }
@@ -2307,58 +2309,22 @@ document.getElementById("saveProfileBtn")?.addEventListener("click", (e) => {
   triggerConfetti();
   announce("Profile updated successfully.");
 });
-
-// ==========================================================================
-// MOTIVATIONAL QUOTES
-// ==========================================================================
-
-const QUOTES = [
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-  { text: "It always seems impossible until it is done.", author: "Nelson Mandela" },
-  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
-  { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
-  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-  { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
-  { text: "Push yourself, because no one else is going to do it for you.", author: "Anonymous" },
-  { text: "Small progress is still progress. Keep going.", author: "Anonymous" },
-  { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
-  { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
-  { text: "Study now, Netflix later.", author: "Every Student Ever" },
-  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
-  { text: "The beautiful thing about learning is nobody can take it away from you.", author: "B.B. King" },
-  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
-  { text: "The expert in anything was once a beginner.", author: "Helen Hayes" },
-  { text: "Every accomplishment starts with the decision to try.", author: "John F. Kennedy" },
-  { text: "Dream big. Start small. Act now.", author: "Robin Sharma" },
-  { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
-  { text: "Focus on progress, not perfection.", author: "Anonymous" },
-];
-
-const quoteIndices = { 1: 0, 2: 10 };
-
-function refreshQuote(slot) {
-  const textEl = document.getElementById(`quoteText${slot}`);
-  const authorEl = document.getElementById(`quoteAuthor${slot}`);
-  if (!textEl || !authorEl) return;
-
-  // Fade out
-  textEl.classList.add("refreshing");
-  authorEl.classList.add("refreshing");
-
-  setTimeout(() => {
-    // Advance to next quote
-    quoteIndices[slot] = (quoteIndices[slot] + 1) % QUOTES.length;
-    const q = QUOTES[quoteIndices[slot]];
-    textEl.textContent = `"${q.text}"`;
-    authorEl.textContent = `— ${q.author}`;
-
-    // Fade back in
-    textEl.classList.remove("refreshing");
-    authorEl.classList.remove("refreshing");
-  }, 280);
+// Apply formatting commands
+function formatDoc(cmd) {
+  document.execCommand(cmd, false, null);
 }
 
-document.getElementById("quoteRefresh1")?.addEventListener("click", () => refreshQuote(1));
-document.getElementById("quoteRefresh2")?.addEventListener("click", () => refreshQuote(2));
+// Save notes to localStorage
+function saveNotes() {
+  const content = document.getElementById("notesEditor").innerHTML;
+  localStorage.setItem("studyNotes", content);
+  alert("Notes saved!");
+}
 
+// Load notes on page load
+window.onload = function() {
+  const saved = localStorage.getItem("studyNotes");
+  if (saved) {
+    document.getElementById("notesEditor").innerHTML = saved;
+  }
+};
