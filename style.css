@@ -6081,3 +6081,380 @@ body.light .drag-handle:hover {
   color: #3b82f6;
   background: rgba(59, 130, 246, 0.1);
 }
+
+/* ==========================================================================
+   DAILY GOALS SECTION
+   ========================================================================== */
+
+.daily-goals-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.daily-goals-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.daily-goals-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  color: var(--secondary);
+}
+
+.daily-goals-title-wrap h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.daily-goals-date {
+  font-size: 12px;
+  color: var(--text-light);
+  margin: 0;
+}
+
+.daily-goals-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.daily-goals-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.daily-goals-reset-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-light);
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.daily-goals-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Progress Ring & Stats Row */
+.daily-goals-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.daily-goals-ring-container {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+
+.daily-goals-ring {
+  width: 90px;
+  height: 90px;
+  transform: rotate(-90deg);
+}
+
+.dg-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 6;
+}
+
+.dg-ring-fill {
+  fill: none;
+  stroke: url(#dgGradient);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 213.63; /* 2 * PI * r = 2 * 3.14159 * 34 */
+  stroke-dashoffset: 213.63;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.daily-goals-ring-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.daily-goals-ring-text span:first-child {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  display: block;
+}
+
+.dg-ring-label {
+  font-size: 10px;
+  color: var(--text-light);
+}
+
+.daily-goals-stats {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+}
+
+.dg-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dg-stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.dg-stat-label {
+  font-size: 11px;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Motivational Message */
+.dg-motivation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 18px;
+  font-style: italic;
+  transition: all 0.4s ease;
+}
+
+.dg-motivation.all-done {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Add Goal Input Row */
+.daily-goals-add-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dg-priority-select {
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.daily-goals-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.daily-goals-input:focus {
+  border-color: var(--primary);
+}
+
+.daily-goals-add-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.daily-goals-add-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+/* Goals List */
+.daily-goals-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dg-goal-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.15);
+  transition: all 0.25s ease;
+  animation: dgSlideIn 0.3s ease forwards;
+}
+
+@keyframes dgSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.dg-goal-item:hover {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dg-goal-item.completed {
+  opacity: 0.55;
+}
+
+.dg-goal-item.completed .dg-goal-text {
+  text-decoration: line-through;
+  color: var(--text-light);
+}
+
+.dg-priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dg-priority-dot.high { background: #ef4444; }
+.dg-priority-dot.medium { background: #f59e0b; }
+.dg-priority-dot.low { background: #10b981; }
+
+/* Custom animated checkbox */
+.dg-checkbox-wrap {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.dg-checkbox {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dg-checkbox:checked {
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  border-color: transparent;
+  animation: dgCheckPop 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes dgCheckPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.dg-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.dg-goal-text {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text);
+  transition: all 0.3s;
+}
+
+.dg-goal-delete {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.dg-goal-item:hover .dg-goal-delete {
+  opacity: 1;
+}
+
+.dg-goal-delete:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Confetti burst animation for full completion */
+@keyframes dgBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.daily-goals-card.all-done .daily-goals-ring-text span:first-child {
+  color: #10b981;
+  animation: dgBounce 1s ease infinite;
+}

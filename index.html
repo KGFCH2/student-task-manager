@@ -380,6 +380,85 @@
           </div>
         </div>
         
+        <!-- ====================================================== -->
+        <!-- DAILY GOALS SECTION -->
+        <!-- ====================================================== -->
+        <div class="daily-goals-card glass" id="dailyGoalsCard">
+          <div class="daily-goals-header">
+            <div class="daily-goals-title-wrap">
+              <i class="ri-sun-line"></i>
+              <div>
+                <h3>Daily Goals</h3>
+                <p class="daily-goals-date" id="dailyGoalsDate">Today</p>
+              </div>
+            </div>
+            <div class="daily-goals-header-right">
+              <div class="daily-goals-streak" id="dailyGoalStreak" title="Daily goals streak">
+                <i class="ri-fire-fill"></i>
+                <span id="dailyGoalStreakNum">0</span>
+              </div>
+              <button class="daily-goals-reset-btn" id="dailyGoalsResetBtn" title="Reset all goals for today">
+                <i class="ri-refresh-line"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress Ring & Stats -->
+          <div class="daily-goals-progress-wrap">
+            <div class="daily-goals-ring-container">
+              <svg class="daily-goals-ring" viewBox="0 0 80 80">
+                <circle class="dg-ring-bg" cx="40" cy="40" r="34"/>
+                <circle class="dg-ring-fill" id="dgRingFill" cx="40" cy="40" r="34"/>
+              </svg>
+              <div class="daily-goals-ring-text">
+                <span id="dgPercent">0%</span>
+                <span class="dg-ring-label">done</span>
+              </div>
+            </div>
+            <div class="daily-goals-stats">
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="dgTotalCount">0</span>
+                <span class="dg-stat-label">Total</span>
+              </div>
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="dgDoneCount">0</span>
+                <span class="dg-stat-label">Done</span>
+              </div>
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="dgLeftCount">0</span>
+                <span class="dg-stat-label">Left</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Motivational message -->
+          <div class="dg-motivation" id="dgMotivation">
+            <i class="ri-seedling-line"></i>
+            <span>Set your first goal for today!</span>
+          </div>
+
+          <!-- Add Goal Input -->
+          <div class="daily-goals-add-wrap">
+            <div class="daily-goals-priority-wrap">
+              <select id="dgPrioritySelect" class="dg-priority-select" aria-label="Goal priority">
+                <option value="high">🔴 High</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+              </select>
+            </div>
+            <input type="text" id="dgGoalInput" class="daily-goals-input" placeholder="Add a daily goal..." maxlength="80">
+            <button class="daily-goals-add-btn" id="dgAddBtn" aria-label="Add daily goal">
+              <i class="ri-add-line"></i>
+            </button>
+          </div>
+
+          <!-- Goals List -->
+          <ul class="daily-goals-list" id="dailyGoalsList">
+            <!-- Populated by JS -->
+          </ul>
+
+        </div>
+
         <!-- QUICK BRAIN DUMP SCRATCHPAD -->
         <div class="scratchpad-card glass">
           <div class="scratchpad-header">
