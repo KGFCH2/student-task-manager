@@ -21,6 +21,7 @@ const sortBtns = document.querySelectorAll(".filters .filter-btn[data-sort]");
 // Global states (Removed duplicates)
 let tasks = [];
 let exams = [];
+let vaultFiles = [];
 let currentFilter = "All";
 let currentSort = "default";
 let searchQuery = "";
@@ -198,6 +199,16 @@ function loadData() {
     }
   }
 
+  // Load vault files
+  const savedVault = localStorage.getItem("quests_vault");
+  if (savedVault) {
+    try {
+      vaultFiles = JSON.parse(savedVault);
+    } catch (e) {
+      vaultFiles = [];
+    }
+  }
+
   // Load gamification points
   coins = parseInt(localStorage.getItem("coins")) || 0;
   streak = parseInt(localStorage.getItem("streak")) || 0;
@@ -237,6 +248,7 @@ function loadData() {
 function saveData() {
   localStorage.setItem("quests", JSON.stringify(tasks));
   localStorage.setItem("quests_exams", JSON.stringify(exams));
+  localStorage.setItem("quests_vault", JSON.stringify(vaultFiles));
   localStorage.setItem("coins", coins);
   localStorage.setItem("streak", streak);
   localStorage.setItem("xp", xp);
@@ -2715,12 +2727,227 @@ function renderExams() {
     examsGrid.appendChild(card);
   });
 
-  // Run immediate update then set interval
-  updateExamsCountdown();
-  examTimerInterval = setInterval(updateExamsCountdown, 1000);
 }
+
+
 
 // Call renderExams once data is loaded (add to window.onload block)
 window.addEventListener('load', () => {
   renderExams();
+  renderVault();
 });
+
+// ==========================================================================
+// 9. FILES VAULT FEATURE (ATTACHMENTS & STORAGE)
+// ==========================================================================
+
+const vaultDropZone = document.getElementById("vaultDropZone");
+const vaultFileInput = document.getElementById("vaultFileInput");
+const vaultBrowseBtn = document.getElementById("vaultBrowseBtn");
+const vaultFilesGrid = document.getElementById("vaultFilesGrid");
+const vaultEmptyState = document.getElementById("vaultEmptyState");
+const vaultSearch = document.getElementById("vaultSearch");
+const storageFill = document.getElementById("storageFill");
+const storageText = document.getElementById("storageText");
+
+const MAX_FILE_SIZE = 500 * 1024; // 500 KB limit per file due to LocalStorage
+const MAX_STORAGE_QUOTA = 5 * 1024 * 1024; // 5 MB total quota estimate
+
+// Initialize search listener
+if (vaultSearch) {
+  vaultSearch.addEventListener("input", renderVault);
+}
+
+// Drag & Drop Handlers
+if (vaultDropZone) {
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, () => {
+      vaultDropZone.classList.add('drag-active');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, () => {
+      vaultDropZone.classList.remove('drag-active');
+    }, false);
+  });
+
+  vaultDropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+  }, false);
+
+  vaultBrowseBtn.addEventListener('click', () => {
+    vaultFileInput.click();
+  });
+
+  vaultFileInput.addEventListener('change', function() {
+    handleFiles(this.files);
+    // Reset input so same file can be selected again
+    this.value = '';
+  });
+}
+
+function getStorageUsed() {
+  let totalBytes = 0;
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      totalBytes += ((localStorage[key].length + key.length) * 2); // rough estimate in bytes
+    }
+  }
+  return totalBytes;
+}
+
+function updateStorageUI() {
+  if (!storageFill || !storageText) return;
+  const usedBytes = getStorageUsed();
+  let percent = (usedBytes / MAX_STORAGE_QUOTA) * 100;
+  percent = Math.min(100, percent);
+  
+  storageFill.style.width = `${percent}%`;
+  
+  if (percent > 90) {
+    storageFill.style.background = "#ef4444"; // Red if almost full
+  } else if (percent > 75) {
+    storageFill.style.background = "#f59e0b"; // Orange
+  } else {
+    storageFill.style.background = "linear-gradient(90deg, var(--primary), var(--secondary))";
+  }
+
+  storageText.textContent = `${(usedBytes / 1024).toFixed(1)} KB / ${(MAX_STORAGE_QUOTA / 1024 / 1024).toFixed(1)} MB Used`;
+}
+
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function handleFiles(files) {
+  const filesArray = Array.from(files);
+  let filesAdded = 0;
+
+  filesArray.forEach(file => {
+    if (file.size > MAX_FILE_SIZE) {
+      announce(`File "${file.name}" is too large! Max size is 500KB.`);
+      showTaskPopup(`"${file.name}" too large! 🚨`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Data = e.target.result;
+      
+      const newFileObj = {
+        id: Date.now() + Math.random().toString(36).substr(2, 5),
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        data: base64Data,
+        addedAt: Date.now()
+      };
+
+      vaultFiles.push(newFileObj);
+      filesAdded++;
+
+      // Check if this is the last file to process
+      if (filesAdded === filesArray.length) {
+        saveData();
+        renderVault();
+        announce(`Uploaded ${filesAdded} file(s) to vault.`);
+        showTaskPopup("Files securely vaulted! 🛡️");
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function deleteVaultFile(id) {
+  vaultFiles = vaultFiles.filter(f => f.id !== id);
+  saveData();
+  renderVault();
+  announce("File deleted from vault.");
+}
+
+function downloadVaultFile(id) {
+  const file = vaultFiles.find(f => f.id === id);
+  if (!file) return;
+
+  const a = document.createElement("a");
+  a.href = file.data;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function renderVault() {
+  if (!vaultFilesGrid) return;
+  updateStorageUI();
+
+  // Clear existing cards
+  const existingCards = vaultFilesGrid.querySelectorAll(".vault-card");
+  existingCards.forEach(c => c.remove());
+
+  const searchTerm = vaultSearch ? vaultSearch.value.toLowerCase() : "";
+  const filteredFiles = vaultFiles.filter(f => f.name.toLowerCase().includes(searchTerm));
+
+  if (filteredFiles.length === 0) {
+    if (vaultEmptyState) vaultEmptyState.style.display = "block";
+    return;
+  }
+  
+  if (vaultEmptyState) vaultEmptyState.style.display = "none";
+
+  // Sort by newest first
+  filteredFiles.sort((a, b) => b.addedAt - a.addedAt);
+
+  filteredFiles.forEach(file => {
+    const card = document.createElement("div");
+    card.className = "vault-card";
+
+    let previewHtml = "";
+    if (file.type.startsWith("image/")) {
+      previewHtml = `<img src="${file.data}" alt="${file.name}" loading="lazy" />`;
+    } else if (file.type === "application/pdf") {
+      previewHtml = `<i class="ri-file-pdf-2-fill" style="color: #ef4444;"></i>`;
+    } else if (file.type.includes("text")) {
+      previewHtml = `<i class="ri-file-text-fill" style="color: var(--secondary);"></i>`;
+    } else {
+      previewHtml = `<i class="ri-file-fill" style="color: var(--text-light);"></i>`;
+    }
+
+    card.innerHTML = `
+      <div class="vault-card-preview">
+        ${previewHtml}
+      </div>
+      <div class="vault-card-info">
+        <div class="vault-card-name" title="${file.name}">${file.name}</div>
+        <div class="vault-card-size">${formatBytes(file.size)}</div>
+        <div class="vault-card-actions">
+          <button class="vault-action-btn" onclick="downloadVaultFile('${file.id}')" aria-label="Download ${file.name}">
+            <i class="ri-download-2-line"></i> Download
+          </button>
+          <button class="vault-action-btn delete" onclick="deleteVaultFile('${file.id}')" aria-label="Delete ${file.name}">
+            <i class="ri-delete-bin-line"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    vaultFilesGrid.appendChild(card);
+  });
+}

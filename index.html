@@ -172,6 +172,9 @@
         <button class="tab-btn" id="tabBtnAssignments" data-tab="assignments" role="tab" aria-selected="false" aria-controls="assignments-tab">
           <i class="ri-calendar-check-line"></i> Assignments
         </button>
+        <button class="tab-btn" id="tabBtnVault" data-tab="vault" role="tab" aria-selected="false" aria-controls="vault-tab">
+          <i class="ri-folder-open-line"></i> Files Vault
+        </button>
       </div>
       
       <!-- TAB 1: QUESTS & TIMER -->
@@ -599,6 +602,50 @@
 
       </div>
 
+      <!-- TAB 4: FILES VAULT -->
+      <div id="vault-tab" class="tab-content" role="tabpanel" aria-labelledby="tabBtnVault">
+        
+        <div class="vault-header">
+          <div class="vault-title-area">
+            <h2><i class="ri-folder-lock-line"></i> Secure File Vault</h2>
+            <p>Upload and manage study materials, notes, and resources.</p>
+          </div>
+          <div class="vault-storage-info">
+            <div class="storage-bar"><div class="storage-fill" id="storageFill"></div></div>
+            <p id="storageText">0 KB / 5 MB LocalStorage used</p>
+          </div>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div class="vault-drop-zone glass" id="vaultDropZone">
+          <input type="file" id="vaultFileInput" multiple accept=".pdf,image/*,.txt,.doc,.docx" class="hidden-file-input">
+          <div class="drop-zone-content">
+            <i class="ri-upload-cloud-2-line drop-icon"></i>
+            <h3>Drag & Drop Files Here</h3>
+            <p>or <button class="browse-btn" id="vaultBrowseBtn">browse from device</button></p>
+            <span class="size-limit-note">Max size: 500KB per file (due to browser storage limits)</span>
+          </div>
+        </div>
+
+        <!-- Filter/Sort bar for files -->
+        <div class="asgn-controls-bar" style="margin-top: 20px;">
+          <div class="asgn-search-wrap" style="flex: 1; max-width: none;">
+            <i class="ri-search-line"></i>
+            <input type="text" id="vaultSearch" placeholder="Search files by name..." />
+          </div>
+        </div>
+
+        <!-- Files Grid -->
+        <div class="vault-files-grid" id="vaultFilesGrid">
+          <!-- Dynamically populated -->
+          <div class="vault-empty-state" id="vaultEmptyState">
+            <i class="ri-file-damage-line"></i>
+            <p>Your vault is empty. Upload some study materials!</p>
+          </div>
+        </div>
+
+      </div>
+
       <div id="analytics-tab" class="tab-content" role="tabpanel" aria-labelledby="tabBtnAnalytics">
 
         <!-- Stats summary row -->
@@ -852,6 +899,11 @@
     
     <button class="dock-btn-quick" id="mobileQuickAddBtn" aria-label="Quick Add Quest">
       <i class="ri-add-line"></i>
+    </button>
+    
+    <button class="dock-btn" id="dockBtnVaultMobile" data-tab="vault" role="tab" aria-selected="false" aria-controls="vault-tab" aria-label="Open Files Vault">
+      <i class="ri-folder-open-line"></i>
+      <span>Vault</span>
     </button>
     
     <button class="dock-btn" id="dockBtnAnalytics" data-tab="analytics" role="tab" aria-selected="false" aria-controls="analytics-tab" aria-label="Open Stats dashboard">
