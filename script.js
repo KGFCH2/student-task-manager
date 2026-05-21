@@ -3152,6 +3152,12 @@ if (vaultSearch) {
   vaultSearch.addEventListener("input", renderVault);
 }
 
+// Clear Vault button binding (added feature)
+const clearVaultBtn = document.getElementById("clearVaultBtn");
+if (clearVaultBtn) {
+  clearVaultBtn.addEventListener("click", clearVault);
+}
+
 // Drag & Drop Handlers
 if (vaultDropZone) {
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -3274,6 +3280,17 @@ function deleteVaultFile(id) {
   saveData();
   renderVault();
   announce("File deleted from vault.");
+}
+
+// New feature: Clear entire vault after confirmation
+function clearVault() {
+  const proceed = confirm("Are you sure you want to clear all files from the vault? This action cannot be undone.");
+  if (!proceed) return;
+  vaultFiles = [];
+  saveData();
+  renderVault();
+  announce("All files removed from vault.");
+  try { showTaskPopup("Vault cleared."); } catch (e) { /* ignore if popup not available */ }
 }
 
 function downloadVaultFile(id) {
