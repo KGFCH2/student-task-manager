@@ -181,6 +181,9 @@
         <button class="tab-btn" id="tabBtnPerformance" data-tab="performance" role="tab" aria-selected="false" aria-controls="performance-tab">
           <i class="ri-medal-line"></i> Academic Performance
         </button>
+        <button class="tab-btn" id="tabBtnTimetable" data-tab="timetable" role="tab" aria-selected="false" aria-controls="timetable-tab">
+          <i class="ri-calendar-todo-line"></i> Smart Timetable
+        </button>
       </div>
       
       <!-- TAB 1: QUESTS & TIMER -->
@@ -1085,6 +1088,38 @@
         </div>
       </div>
 
+      <!-- TAB 7: SMART TIMETABLE -->
+      <div id="timetable-tab" class="tab-content" role="tabpanel" aria-labelledby="tabBtnTimetable">
+        <div class="vault-header">
+          <div class="vault-title-area">
+            <h2><i class="ri-calendar-todo-line"></i> Smart Timetable</h2>
+            <p>Schedule your weekly study sessions and receive automated alerts.</p>
+          </div>
+        </div>
+
+        <div class="task-box timetable-form">
+          <select id="ttDayInput">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+          <input type="text" id="ttSubjectInput" placeholder="Subject Name" />
+          <input type="time" id="ttStartTimeInput" title="Start Time" />
+          <input type="time" id="ttEndTimeInput" title="End Time" />
+          <button id="addTimetableBtn">
+            <i class="ri-add-line"></i> Schedule
+          </button>
+        </div>
+
+        <div class="timetable-grid" id="timetableGrid">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
       <!-- APP FOOTER -->
       <footer class="app-footer">
         <div class="footer-content">
@@ -1144,6 +1179,11 @@
     <button class="dock-btn" id="dockBtnPerformanceMobile" data-tab="performance" role="tab" aria-selected="false" aria-controls="performance-tab" aria-label="Open Performance Tracker">
       <i class="ri-medal-line"></i>
       <span>Perf</span>
+    </button>
+
+    <button class="dock-btn" id="dockBtnTimetableMobile" data-tab="timetable" role="tab" aria-selected="false" aria-controls="timetable-tab" aria-label="Open Timetable">
+      <i class="ri-calendar-todo-line"></i>
+      <span>Time</span>
     </button>
     
     <button class="dock-btn" id="dockBtnBookmarksMobile" data-tab="bookmarks" role="tab" aria-selected="false" aria-controls="bookmarks-tab" aria-label="Open Bookmarks">

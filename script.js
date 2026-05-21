@@ -25,6 +25,7 @@ let currentSort = "default";
 let searchQuery = "";
 let currentView = "list";
 let performanceData = [];
+let timetable = [];
 let coins = 0;
 let streak = 0;
 let xp = 120;
@@ -232,6 +233,16 @@ function loadData() {
       performanceData = [];
     }
   }
+
+  // Load Timetable
+  const savedTimetable = localStorage.getItem("quests_timetable");
+  if (savedTimetable) {
+    try {
+      timetable = JSON.parse(savedTimetable);
+    } catch (e) {
+      timetable = [];
+    }
+  }
 }
 
 function saveData() {
@@ -242,6 +253,7 @@ function saveData() {
   localStorage.setItem("quests_analytics", JSON.stringify(analyticsData));
   localStorage.setItem("quests_profile", JSON.stringify(profile));
   localStorage.setItem("quests_performance", JSON.stringify(performanceData));
+  localStorage.setItem("quests_timetable", JSON.stringify(timetable));
 }
 
 // Generate beautiful visual mock data for past 15 days if empty
@@ -1104,6 +1116,127 @@ window.deletePerformance = (id) => {
     announce("Record deleted.");
     showTaskPopup("RECORD REMOVED");
   }
+}
+
+// ==========================================================================
+// SMART TIMETABLE SYSTEM
+// ==========================================================================
+
+function renderTimetable() {
+  const container = document.getElementById("timetableGrid");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (timetable.length === 0) {
+    container.innerHTML = `<div class="empty-state"><i class="ri-calendar-line"></i><h3>No Schedule Set</h3><p>Start planning your week by adding study slots above.</p></div>`;
+    return;
+  }
+
+  const now = new Date();
+  const dayNamesShort = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const currentDay = dayNamesShort[now.getDay()];
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  
+  dayNames.forEach(day => {
+    const daySlots = timetable.filter(s => s.day === day).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    if (daySlots.length === 0) return;
+
+    const dayCard = document.createElement("div");
+    dayCard.className = "timetable-day-card";
+    dayCard.innerHTML = `<div class="timetable-day-header"><i class="ri-calendar-event-line"></i> ${day}</div>`;
+    
+    const slotsList = document.createElement("div");
+    slotsList.className = "tt-slots-list";
+    slotsList.style.display = "flex";
+    slotsList.style.flexDirection = "column";
+    slotsList.style.gap = "10px";
+
+    daySlots.forEach(slot => {
+      const isCurrent = slot.day === currentDay && currentTime >= slot.startTime && currentTime < slot.endTime;
+      const slotEl = document.createElement("div");
+      slotEl.className = `tt-slot ${isCurrent ? 'active-slot' : ''}`;
+      slotEl.innerHTML = `
+        <div class="tt-slot-info">
+          <h4>${escapeHtml(slot.subject)} ${isCurrent ? '<span class="active-indicator">NOW STUDYING</span>' : ''}</h4>
+          <p><i class="ri-time-line"></i> ${slot.startTime} - ${slot.endTime}</p>
+        </div>
+        <button class="icon-btn tt-delete-btn" onclick="deleteTimetableSlot(${slot.id})">
+          <i class="ri-delete-bin-line"></i>
+        </button>
+      `;
+      slotsList.appendChild(slotEl);
+    });
+
+    dayCard.appendChild(slotsList);
+    container.appendChild(dayCard);
+  });
+}
+
+window.deleteTimetableSlot = (id) => {
+  if (confirm("Remove this study slot?")) {
+    timetable = timetable.filter(s => s.id !== id);
+    saveData();
+    renderTimetable();
+    showTaskPopup("SCHEDULE UPDATED");
+  }
+};
+
+function initTimetableNotifier() {
+  setInterval(() => {
+    const now = new Date();
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const currentDay = dayNames[now.getDay()];
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // 5-minute early warning logic
+    const fiveMinsLater = new Date(now.getTime() + 5 * 60000);
+    const upcomingTime = `${String(fiveMinsLater.getHours()).padStart(2, '0')}:${String(fiveMinsLater.getMinutes()).padStart(2, '0')}`;
+
+    let dataUpdated = false;
+
+    timetable.forEach(slot => {
+      // Alert 1: Session Starting NOW
+      if (slot.day === currentDay && slot.startTime === currentTime) {
+        if (slot.lastNotified !== currentTime) {
+          const msg = `IT'S TIME FOR ${slot.subject.toUpperCase()} SESSION!`;
+          showTaskPopup(msg);
+          sendNotification("Study Time! 📚", `Your scheduled ${slot.subject} session starts now.`);
+          slot.lastNotified = currentTime;
+          dataUpdated = true;
+          
+          // Play a gentle alert sound if browser allows
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.4;
+            audio.play();
+          } catch(e) {}
+        }
+      }
+      
+      // Alert 2: Session Starting in 5 Minutes (Upcoming)
+      if (slot.day === currentDay && slot.startTime === upcomingTime) {
+        const upcomingKey = `warn_${upcomingTime}`;
+        if (slot.lastNotified !== upcomingKey) {
+          showTaskPopup(`UPCOMING: ${slot.subject.toUpperCase()} IN 5 MINS`);
+          slot.lastNotified = upcomingKey;
+          dataUpdated = true;
+        }
+      }
+      
+      // Reset lastNotified after a minute passes
+      if (slot.lastNotified && slot.lastNotified !== currentTime && !slot.lastNotified.startsWith('warn_')) {
+        slot.lastNotified = null;
+        dataUpdated = true;
+      }
+    });
+
+    if (dataUpdated) {
+      saveData();
+      renderTimetable(); // Refresh to show "NOW STUDYING" badge
+    }
+  }, 30000); // Check every 30 seconds
 }
 
 function updateAnalyticsStreak(todayStr) {
@@ -2398,9 +2531,11 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWeeklyStreak();
   updateDisplay();
   renderPerformance();
+  renderTimetable();
   renderProfile();
 
   checkOverduePenalties();
+  initTimetableNotifier();
   initDeadlineUpdater();
 
 
@@ -2476,6 +2611,38 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("subjectNameInput").value = "";
       document.getElementById("marksObtainedInput").value = "";
       document.getElementById("totalMarksInput").value = "";
+    });
+  }
+
+  // Timetable Add Logic
+  const addTimetableBtn = document.getElementById("addTimetableBtn");
+  if (addTimetableBtn) {
+    addTimetableBtn.addEventListener("click", () => {
+      const day = document.getElementById("ttDayInput").value;
+      const subject = document.getElementById("ttSubjectInput").value.trim();
+      const start = document.getElementById("ttStartTimeInput").value;
+      const end = document.getElementById("ttEndTimeInput").value;
+
+      if (!subject || !start || !end) {
+        showTaskPopup("PLEASE FILL ALL FIELDS");
+        return;
+      }
+
+      if (start >= end) {
+        showTaskPopup("END TIME MUST BE AFTER START TIME");
+        return;
+      }
+
+      timetable.push({
+        id: Date.now(),
+        day, subject, startTime: start, endTime: end,
+        lastNotified: null
+      });
+
+      saveData();
+      renderTimetable();
+      showTaskPopup("TIMETABLE UPDATED");
+      document.getElementById("ttSubjectInput").value = "";
     });
   }
 });
