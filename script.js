@@ -27,6 +27,7 @@ let currentView = "list";
 let performanceData = [];
 let timetable = [];
 let calendarEvents = [];
+let subjects = [];
 let currentCalendarDate = new Date();
 let coins = 0;
 let streak = 0;
@@ -245,6 +246,16 @@ function loadData() {
       timetable = [];
     }
   }
+
+  // Load Subjects
+  const savedSubjects = localStorage.getItem("quests_subjects");
+  if (savedSubjects) {
+    try {
+      subjects = JSON.parse(savedSubjects);
+    } catch (e) {
+      subjects = [];
+    }
+  }
 }
 
 function saveData() {
@@ -256,6 +267,7 @@ function saveData() {
   localStorage.setItem("quests_profile", JSON.stringify(profile));
   localStorage.setItem("quests_performance", JSON.stringify(performanceData));
   localStorage.setItem("quests_timetable", JSON.stringify(timetable));
+  localStorage.setItem("quests_subjects", JSON.stringify(subjects));
   localStorage.setItem("quests_calendar", JSON.stringify(calendarEvents));
 }
 
@@ -1548,6 +1560,9 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === "analytics") {
       updateAnalyticsDashboard();
     }
+    if (btn.dataset.tab === "subject-tracker") {
+      renderSubjectTracker();
+    }
 
     // Re-render assignments on tab activation
     if (btn.dataset.tab === "assignments") {
@@ -2639,6 +2654,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderTimetable();
   renderCalendar();
   renderProfile();
+  renderSubjectTracker();
 
   checkOverduePenalties();
   initTimetableNotifier();
@@ -2782,6 +2798,50 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("eventDateInput").value = "";
     document.getElementById("eventTimeInput").value = "";
   });
+
+  // Subject Tracker Logic
+  const addSubjectBtn = document.getElementById("addSubjectBtn");
+  const subjectForm = document.getElementById("subjectInputForm");
+  const titleInput = document.getElementById("newSubjectTitleInput");
+  const completedInput = document.getElementById("newSubjectCompletedInput");
+  const totalInput = document.getElementById("newSubjectTotalInput");
+
+  if (addSubjectBtn && subjectForm) {
+    addSubjectBtn.addEventListener("click", () => {
+      subjectForm.style.display = subjectForm.style.display === "none" ? "grid" : "none";
+      if (subjectForm.style.display === "grid") titleInput.focus();
+    });
+    document.getElementById("cancelSubjectBtn").addEventListener("click", () => {
+      subjectForm.style.display = "none";
+    });
+    
+    document.getElementById("saveSubjectBtn").addEventListener("click", () => {
+      const title = titleInput.value.trim();
+      const completed = parseInt(completedInput.value) || 0;
+      const total = parseInt(totalInput.value) || 1;
+
+      if (title) {
+        subjects.push({ 
+          id: Date.now(), 
+          title, 
+          completed: Math.max(0, completed), 
+          total: Math.max(1, total) 
+        });
+        saveData();
+        renderSubjectTracker();
+        titleInput.value = "";
+        completedInput.value = "";
+        totalInput.value = "";
+        subjectForm.style.display = "none";
+        showTaskPopup("SUBJECT CREATED");
+      }
+    });
+
+    titleInput.addEventListener("keyup", (e) => {
+      if (e.key === "Enter") document.getElementById("saveSubjectBtn").click();
+    });
+  }
+
 });
 
 // ==========================================================================
