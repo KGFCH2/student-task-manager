@@ -784,19 +784,6 @@
         <!-- Stats summary row -->
         <div class="analytics-stats-grid">
           <div class="analytics-stat-card glass">
-            <div class="stat-icon-wrapper blue">
-              <i class="ri-time-line"></i>
-            </div>
-            <div class="stat-info" style="width: 100%;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <h3 id="analyticsTotalHours">0.0h</h3>
-                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +12%</span>
-              </div>
-              <p>Total Study Time</p>
-            </div>
-          </div>
-          
-          <div class="analytics-stat-card glass">
             <div class="stat-icon-wrapper green">
               <i class="ri-checkbox-circle-fill"></i>
             </div>
@@ -805,7 +792,20 @@
                 <h3 id="analyticsCompletedQuests">0</h3>
                 <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +8%</span>
               </div>
-              <p>Completed Quests</p>
+              <p>Total Tasks Completed</p>
+            </div>
+          </div>
+
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-time-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsPendingTasks">0</h3>
+                <span class="trend-pill negative"><i class="ri-arrow-down-line"></i> -5%</span>
+              </div>
+              <p>Pending Tasks</p>
             </div>
           </div>
           
@@ -836,6 +836,45 @@
           </div>
         </div>
 
+        <div class="analytics-weekly-summary-grid">
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper blue">
+              <i class="ri-calendar-check-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyCompletedTasks">0</h4>
+              <p>Completed this week</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-time-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyPendingTasks">0</h4>
+              <p>Pending this week</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper green">
+              <i class="ri-repeat-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyAvgTasks">0</h4>
+              <p>Avg tasks / day</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper purple">
+              <i class="ri-pie-chart-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyCompletionRate">0%</h4>
+              <p>Weekly completion</p>
+            </div>
+          </div>
+        </div>
+
 
         <!-- Charts grid -->
         <div class="analytics-charts-grid">
@@ -844,7 +883,7 @@
             <div class="chart-header">
               <div class="header-left">
                 <i class="ri-bar-chart-fill"></i>
-                <h3>Study Hours</h3>
+                <h3>Productivity Chart</h3>
               </div>
               <div class="chart-toggle-group">
                 <button class="toggle-btn active" id="btnWeeklyStudy">Weekly</button>

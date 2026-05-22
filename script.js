@@ -1856,9 +1856,13 @@ function updateAnalyticsDashboard() {
   const totalHoursEl = document.getElementById("analyticsTotalHours");
   if (totalHoursEl) totalHoursEl.textContent = `${totalStudyHours}h`;
 
-  const totalCompletedQuests = Object.values(analyticsData.completedTasksPerDay).reduce((a, b) => a + b, 0);
+  const totalCompletedQuests = tasks.filter(task => task.completed).length;
   const completedQuestsEl = document.getElementById("analyticsCompletedQuests");
   if (completedQuestsEl) completedQuestsEl.textContent = totalCompletedQuests;
+
+  const pendingTaskCount = tasks.filter(task => !task.completed).length;
+  const pendingTasksEl = document.getElementById("analyticsPendingTasks");
+  if (pendingTasksEl) pendingTasksEl.textContent = pendingTaskCount;
 
   const streakEl = document.getElementById("analyticsStreak");
   if (streakEl) streakEl.textContent = `${analyticsData.currentStreak} days`;
@@ -1868,6 +1872,32 @@ function updateAnalyticsDashboard() {
   const completionRate = totalCreated > 0 ? Math.round((totalCompleted / totalCreated) * 100) : 0;
   const rateEl = document.getElementById("analyticsCompletionRate");
   if (rateEl) rateEl.textContent = `${completionRate}%`;
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weeklyTasks = tasks.filter(task => {
+    if (!task.createdAt) return false;
+    const createdDate = new Date(task.createdAt);
+    return createdDate >= weekStart && createdDate <= today;
+  });
+
+  const weeklyCompleted = weeklyTasks.filter(task => task.completed).length;
+  const weeklyPending = weeklyTasks.filter(task => !task.completed).length;
+  const weeklyAvg = weeklyTasks.length ? Math.max(0, Math.round((weeklyTasks.length / 7) * 10) / 10) : 0;
+  const weeklyCompletionRate = weeklyTasks.length ? Math.round((weeklyCompleted / weeklyTasks.length) * 100) : 0;
+
+  const weeklyCompletedTasksEl = document.getElementById("weeklyCompletedTasks");
+  if (weeklyCompletedTasksEl) weeklyCompletedTasksEl.textContent = weeklyCompleted;
+  const weeklyPendingTasksEl = document.getElementById("weeklyPendingTasks");
+  if (weeklyPendingTasksEl) weeklyPendingTasksEl.textContent = weeklyPending;
+  const weeklyAvgTasksEl = document.getElementById("weeklyAvgTasks");
+  if (weeklyAvgTasksEl) weeklyAvgTasksEl.textContent = weeklyAvg;
+  const weeklyCompletionRateEl = document.getElementById("weeklyCompletionRate");
+  if (weeklyCompletionRateEl) weeklyCompletionRateEl.textContent = `${weeklyCompletionRate}%`;
 
   // 2. Initialize or Update Chart.js instances
   initStudyHoursChart();
