@@ -2176,6 +2176,9 @@ tabBtns.forEach(btn => {
     if (btn.dataset.tab === "analytics") {
       updateAnalyticsDashboard();
     }
+    if (btn.dataset.tab === "streak") {
+      renderStreakTracker();
+    }
     if (btn.dataset.tab === "subject-tracker") {
       renderSubjectTracker();
     }
@@ -2363,46 +2366,144 @@ function triggerCoinExplosion(event) {
 // ==========================================================================
 
 function renderWeeklyStreak() {
-  const container = document.getElementById("streakDaysGrid");
-  if (!container) return;
-  container.innerHTML = "";
-
+  const containers = document.querySelectorAll(".streak-days");
+  if (!containers.length) return;
   const dayNames = ["M", "T", "W", "T", "F", "S", "S"];
   const today = new Date();
-  
-  // Find Mon date of the current week
-  const currentDayOfWeek = today.getDay(); // 0 is Sun, 1-6 Mon-Sat
+  const currentDayOfWeek = today.getDay();
   const diffToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
-  
   const monday = new Date();
   monday.setDate(today.getDate() + diffToMonday);
 
-  for (let i = 0; i < 7; i++) {
-    const loopDay = new Date(monday.getTime());
-    loopDay.setDate(monday.getDate() + i);
-    const dateStr = getFormattedDate(loopDay);
+  containers.forEach(container => {
+    container.innerHTML = "";
 
-    // Is active if completed a task or studied
-    const hasStudyMins = (analyticsData.dailyStudyMinutes[dateStr] || 0) > 0;
-    const hasCompletions = (analyticsData.completedTasksPerDay[dateStr] || 0) > 0;
-    const isActive = hasStudyMins || hasCompletions;
+    for (let i = 0; i < 7; i++) {
+      const loopDay = new Date(monday.getTime());
+      loopDay.setDate(monday.getDate() + i);
+      const dateStr = getFormattedDate(loopDay);
 
-    const cell = document.createElement("div");
-    cell.className = "streak-day-cell";
-    if (isActive) {
-      cell.classList.add("active");
+      const hasStudyMins = (analyticsData.dailyStudyMinutes[dateStr] || 0) > 0;
+      const hasCompletions = (analyticsData.completedTasksPerDay[dateStr] || 0) > 0;
+      const isActive = hasStudyMins || hasCompletions;
+
+      const cell = document.createElement("div");
+      cell.className = "streak-day-cell";
+      if (isActive) {
+        cell.classList.add("active");
+      }
+
+      cell.innerHTML = `
+        <span>${dayNames[i]}</span>
+        <div class="day-indicator">
+          ${isActive ? '<i class="ri-fire-fill"></i>' : '<i class="ri-checkbox-blank-circle-line"></i>'}
+        </div>
+      `;
+
+      container.appendChild(cell);
     }
+  });
+}
 
-    cell.innerHTML = `
-      <span>${dayNames[i]}</span>
-      <div class="day-indicator">
-        ${isActive ? '<i class="ri-fire-fill"></i>' : '<i class="ri-checkbox-blank-circle-line"></i>'}
-      </div>
-    `;
+function getTodayStreakGoal() {
+  const today = getFormattedDate(new Date());
+  const completed = analyticsData.completedTasksPerDay[today] || 0;
+  const minutes = analyticsData.dailyStudyMinutes[today] || 0;
+  return {
+    minutes,
+    completed,
+    goal: 60,
+    targetTasks: 5
+  };
+}
 
-    container.appendChild(cell);
+function updateStreakMetrics() {
+  const today = new Date();
+  let currentCount = 0;
+  let longest = analyticsData.longestStreak || 0;
+
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateStr = getFormattedDate(date);
+    const active = (analyticsData.dailyStudyMinutes[dateStr] || 0) > 0 || (analyticsData.completedTasksPerDay[dateStr] || 0) > 0;
+
+    if (!active) break;
+    currentCount += 1;
+  }
+
+  analyticsData.currentStreak = currentCount;
+  analyticsData.longestStreak = Math.max(longest, currentCount);
+  streak = currentCount;
+  saveData();
+}
+
+function renderStreakTracker() {
+  const todayMetrics = getTodayStreakGoal();
+  const currentValue = document.getElementById("streakCurrentValue");
+  const longestValue = document.getElementById("streakLongestValue");
+  const todayMinutes = document.getElementById("streakTodayMinutes");
+  const goalProgress = document.getElementById("streakGoalProgress");
+  const goalPercent = document.getElementById("streakGoalPercent");
+  const goalFill = document.getElementById("streakGoalFill");
+  const goalCount = document.getElementById("streakGoalCount");
+  const tasksCompleted = document.getElementById("streakTasksCompleted");
+  const goalLeft = document.getElementById("streakGoalLeft");
+  const xpReward = document.getElementById("streakXpReward");
+  const streakCurrent = analyticsData.currentStreak || 0;
+  const streakLongest = analyticsData.longestStreak || 0;
+  const progressValue = Math.min(100, Math.round((todayMetrics.minutes / todayMetrics.goal) * 100));
+  const remaining = Math.max(0, todayMetrics.targetTasks - todayMetrics.completed);
+
+  if (currentValue) currentValue.textContent = `${streakCurrent} days`;
+  if (longestValue) longestValue.textContent = `${streakLongest} days`;
+  if (todayMinutes) todayMinutes.textContent = `${todayMetrics.minutes} min`;
+  if (goalProgress) goalProgress.textContent = `${progressValue}%`;
+  if (goalPercent) goalPercent.textContent = `${progressValue}%`;
+  if (goalFill) goalFill.style.strokeDasharray = `${progressValue} 100`;
+  if (goalCount) goalCount.innerHTML = `<i class="ri-checkbox-circle-line"></i> ${todayMetrics.completed} / ${todayMetrics.targetTasks}`;
+  if (tasksCompleted) tasksCompleted.textContent = todayMetrics.completed;
+  if (goalLeft) goalLeft.textContent = remaining;
+  if (xpReward) xpReward.textContent = `+${todayMetrics.completed * 20} XP`;
+
+  renderWeeklyStreak();
+  updateGamification();
+}
+
+function logStudyMinutes(minutes = 25) {
+  const today = getFormattedDate(new Date());
+  analyticsData.dailyStudyMinutes[today] = (analyticsData.dailyStudyMinutes[today] || 0) + minutes;
+  analyticsData.completedTasksPerDay[today] = Math.max(analyticsData.completedTasksPerDay[today] || 0, 1);
+  xp += 15;
+  updateStreakMetrics();
+  saveData();
+  renderStreakTracker();
+  checkAchievements();
+  announce(`Logged ${minutes} minutes of study. Keep the streak alive!`);
+}
+
+function completeDailyGoal() {
+  const today = getFormattedDate(new Date());
+  analyticsData.completedTasksPerDay[today] = Math.max(analyticsData.completedTasksPerDay[today] || 0, 5);
+  analyticsData.dailyStudyMinutes[today] = Math.max(analyticsData.dailyStudyMinutes[today] || 0, 60);
+  xp += 40;
+  updateStreakMetrics();
+  saveData();
+  renderStreakTracker();
+  checkAchievements();
+  announce("Today's goal completed — streak progress updated.");
+}
+
+function announce(message) {
+  const liveRegion = document.getElementById("liveRegion");
+  if (liveRegion) {
+    liveRegion.textContent = message;
+    setTimeout(() => {
+      liveRegion.textContent = "";
+    }, 3000);
   }
 }
+
 
 // ==========================================================================
 // 8. CHART.JS ANALYTICS GENERATOR
@@ -2449,6 +2550,21 @@ function updateAnalyticsDashboard() {
     });
   }
 
+<<<<<<< HEAD
+  loadData();
+  updateStreakMetrics();
+  updateGamification();
+  renderTasks();
+  renderAchievements();
+  renderWeeklyStreak();
+  renderStreakTracker();
+  updateDisplay();
+  renderPerformance();
+  renderTimetable();
+  renderCalendar();
+  renderProfile();
+  renderSubjectTracker();
+=======
   // Close panel if clicking outside
   document.addEventListener('click', (e) => {
     if (!panel) return;
@@ -2574,6 +2690,21 @@ function updateAnalyticsDashboard() {
 
   const ctaAddSubject = document.getElementById('ctaAddSubject');
   if (ctaAddSubject) ctaAddSubject.addEventListener('click', () => { const s = document.getElementById('subjectInputForm'); if (s) { s.style.display='grid'; s.querySelector('input')?.focus(); } });
+>>>>>>> 054ebbbb9cecb4be9ec267ac3d1e445c31708ce6
+
+  document.getElementById("logStudyBtn")?.addEventListener("click", () => {
+    logStudyMinutes(25);
+  });
+
+  document.getElementById("completeGoalBtn")?.addEventListener("click", () => {
+    completeDailyGoal();
+  });
+
+  document.getElementById("refreshStreakBtn")?.addEventListener("click", () => {
+    updateStreakMetrics();
+    renderStreakTracker();
+    announce("Study streak tracker refreshed.");
+  });
 
   // Footer: set dynamic year and small accessibility tweaks
   const footerCopyright = document.getElementById('footerCopyright');

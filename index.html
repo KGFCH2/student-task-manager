@@ -208,6 +208,9 @@
         <button class="tab-btn" id="tabBtnAnalytics" data-tab="analytics" role="tab" aria-selected="false" aria-controls="analytics-tab">
           <i class="ri-bar-chart-2-line"></i> Analytics Hub
         </button>
+        <button class="tab-btn" id="tabBtnStreak" data-tab="streak" role="tab" aria-selected="false" aria-controls="streak-tab">
+          <i class="ri-fire-line"></i> Streak Tracker
+        </button>
         <button class="tab-btn" id="tabBtnAssignments" data-tab="assignments" role="tab" aria-selected="false" aria-controls="assignments-tab">
           <i class="ri-calendar-check-line"></i> Assignments
         </button>
@@ -785,6 +788,118 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- TAB 3.1: STREAK TRACKER -->
+      <div id="streak-tab" class="tab-content" role="tabpanel" aria-labelledby="tabBtnStreak">
+        <div class="vault-header">
+          <div class="vault-title-area">
+            <h2><i class="ri-fire-line"></i> Study Streak Tracker</h2>
+            <p>Keep your momentum with daily streak monitoring, weekly progress, and achievement rewards.</p>
+          </div>
+          <button class="add-project-btn" id="refreshStreakBtn" title="Refresh streak data">
+            <i class="ri-refresh-line"></i> Refresh Tracker
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card glass">
+            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;"><i class="ri-fire-fill"></i></div>
+            <h3 id="streakCurrentValue">0 days</h3>
+            <p>Current streak</p>
+          </div>
+          <div class="stat-card glass">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;"><i class="ri-time-line"></i></div>
+            <h3 id="streakLongestValue">0 days</h3>
+            <p>Longest streak</p>
+          </div>
+          <div class="stat-card glass">
+            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;"><i class="ri-timer-flash-line"></i></div>
+            <h3 id="streakTodayMinutes">0 min</h3>
+            <p>Today studied</p>
+          </div>
+          <div class="stat-card glass">
+            <div class="stat-icon" style="background: rgba(236, 72, 153, 0.12); color: #ec4899;"><i class="ri-checkbox-circle-fill"></i></div>
+            <h3 id="streakGoalProgress">0%</h3>
+            <p>Goal completion</p>
+          </div>
+        </div>
+
+        <div class="daily-goals-card glass" id="streakProgressCard">
+          <div class="daily-goals-header">
+            <div class="daily-goals-title-wrap">
+              <i class="ri-pie-chart-line"></i>
+              <div>
+                <h3>Daily Progress Monitor</h3>
+                <p>Track your daily study minutes, task progress and motivation score.</p>
+              </div>
+            </div>
+            <div class="daily-goals-header-right">
+              <div class="daily-goals-streak" id="streakGoalCount" title="Daily progress count">
+                <i class="ri-checkbox-circle-line"></i>
+                <span>0 / 5</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="daily-goals-progress-wrap">
+            <div class="daily-goals-ring-container">
+              <svg class="daily-goals-ring" viewBox="0 0 80 80">
+                <circle class="dg-ring-bg" cx="40" cy="40" r="34" />
+                <circle class="dg-ring-fill" id="streakGoalFill" cx="40" cy="40" r="34" />
+              </svg>
+              <div class="daily-goals-ring-text">
+                <span id="streakGoalPercent">0%</span>
+                <span class="dg-ring-label">today</span>
+              </div>
+            </div>
+            <div class="daily-goals-stats">
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="streakTasksCompleted">0</span>
+                <span class="dg-stat-label">Tasks done</span>
+              </div>
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="streakGoalLeft">0</span>
+                <span class="dg-stat-label">Remaining</span>
+              </div>
+              <div class="dg-stat">
+                <span class="dg-stat-num" id="streakXpReward">+0 XP</span>
+                <span class="dg-stat-label">Reward</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="daily-goals-add-wrap" style="gap: 12px;">
+            <button class="daily-goals-add-btn" id="logStudyBtn" aria-label="Log study minutes">
+              <i class="ri-add-line"></i> Log 25 min study
+            </button>
+            <button class="daily-goals-add-btn" id="completeGoalBtn" aria-label="Mark today's goal complete">
+              <i class="ri-checkbox-circle-line"></i> Complete today's goal
+            </button>
+          </div>
+        </div>
+
+        <div class="achievement-card glass" id="streakAchievementCard">
+          <div class="section-title">
+            <i class="ri-award-line"></i>
+            <span>Achievement spotlight</span>
+          </div>
+          <div class="badges" id="streakBadgeGrid">
+            <div class="badge unlocked">🔥 Streak Builder</div>
+            <div class="badge">⚡ Focus Session</div>
+            <div class="badge">🎯 Goal Keeper</div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding: 24px; border-radius: 30px;">
+          <div class="section-title" style="margin-bottom: 20px;">
+            <i class="ri-calendar-todo-line"></i>
+            <span>Weekly Study Activity</span>
+          </div>
+          <div class="streak-days" id="streakDaysGridMain">
+            <!-- Weekly streak cells populated dynamically -->
+          </div>
+        </div>
       </div>
 
       <!-- TAB 4: FILES VAULT -->
