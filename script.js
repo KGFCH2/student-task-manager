@@ -25,6 +25,56 @@ if (taskTemplate) {
   });
 }
 
+
+// Footer enhancements: newsletter subscribe, dynamic year, back-to-top
+document.addEventListener('DOMContentLoaded', () => {
+  // Dynamic year
+  try {
+    const yearEl = document.getElementById('footerCopyright');
+    if (yearEl) {
+      const yr = new Date().getFullYear();
+      yearEl.innerHTML = `&copy; ${yr} TaskQuest. All rights reserved.`;
+    }
+  } catch(e){}
+
+  // Newsletter subscribe
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  const emailInput = document.getElementById('footerEmail');
+  const subscribeMsg = document.getElementById('subscribeMsg');
+  if (subscribeBtn && emailInput) {
+    subscribeBtn.addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        subscribeMsg.textContent = 'Please enter a valid email address.';
+        subscribeMsg.style.color = '#f97316';
+        return;
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
+        if (!stored.includes(email)) stored.push(email);
+        localStorage.setItem('newsletter_subscribers', JSON.stringify(stored));
+        subscribeMsg.textContent = 'Thanks — you are subscribed!';
+        subscribeMsg.style.color = '#10b981';
+        emailInput.value = '';
+        setTimeout(() => subscribeMsg.textContent = '', 4000);
+      } catch (e) {
+        subscribeMsg.textContent = 'Subscription failed. Please try again.';
+        subscribeMsg.style.color = '#ef4444';
+      }
+    });
+  }
+
+  // Back to top behavior
+  const backBtn = document.getElementById('backToTopBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 220) backBtn.classList.add('show'); else backBtn.classList.remove('show');
+    });
+  }
+});
+
+
 // Sidebar metrics elements
 const totalTasks = document.getElementById("totalTasks");
 const completedTasks = document.getElementById("completedTasks");
@@ -57,6 +107,7 @@ let coins = 0;
 let streak = 0;
 let xp = 120;
 let currentStudyView = "weekly";
+let currentCalendarView = 'month';
 let profile = { name: "Student Hero", gender: "Male", class: "Class 10", title: "Focus Warrior ⚔️", photo: null };
 
 // Chart.js instances
@@ -68,6 +119,7 @@ let completionTrendChartInstance = null;
 let analyticsData = {
   dailyStudyMinutes: {},       // e.g. { "2026-05-18": 45.5 }
   completedTasksPerDay: {},    // e.g. { "2026-05-18": 3 }
+  dailyScoreHistory: {},       // e.g. { "2026-05-18": 240 }
   categoryStats: {
     Theory: { created: 0, completed: 0 },
     Practical: { created: 0, completed: 0 },
@@ -77,6 +129,13 @@ let analyticsData = {
   longestStreak: 0,
   currentStreak: 0,
   lastActiveDate: null,
+  productivityRecords: {
+    highestScore: 0,
+    bestProductiveDay: null,
+    highestTasksInDay: 0,
+    highestStudyMinutes: 0,
+    bestStudyDay: null
+  },
   unlockedAchievements: [],    // e.g. ["novice", "spark"]
   unlockedMilestones: []       // e.g. ["30mins", "60mins"]
 };
@@ -262,6 +321,16 @@ function loadData() {
       analyticsData = JSON.parse(savedAnalytics);
       if (!analyticsData.unlockedAchievements) analyticsData.unlockedAchievements = [];
       if (!analyticsData.unlockedMilestones) analyticsData.unlockedMilestones = [];
+      if (!analyticsData.dailyScoreHistory) analyticsData.dailyScoreHistory = {};
+      if (!analyticsData.productivityRecords) {
+        analyticsData.productivityRecords = {
+          highestScore: 0,
+          bestProductiveDay: null,
+          highestTasksInDay: 0,
+          highestStudyMinutes: 0,
+          bestStudyDay: null
+        };
+      }
     } catch (e) {
       initializeAnalyticsData();
     }
@@ -310,6 +379,16 @@ function loadData() {
       subjects = [];
     }
   }
+
+  // Load Calendar Events
+  const savedCalendar = localStorage.getItem('quests_calendar');
+  if (savedCalendar) {
+    try {
+      calendarEvents = JSON.parse(savedCalendar);
+    } catch (e) {
+      calendarEvents = [];
+    }
+  }
 }
 
 function saveData() {
@@ -329,6 +408,149 @@ function saveData() {
 }
 
 // ==========================
+<<<<<<< productivity-branch
+// Notifications Center
+// ==========================
+let notifications = [];
+
+function loadNotifications() {
+  try {
+    const raw = localStorage.getItem('quests_notifications');
+    notifications = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    notifications = [];
+  }
+}
+
+function saveNotifications() {
+  try {
+    localStorage.setItem('quests_notifications', JSON.stringify(notifications));
+  } catch (e) {
+    console.error('Failed saving notifications', e);
+  }
+}
+
+function addNotification({ id, type = 'info', title, body, time = Date.now(), ref } = {}) {
+  if (!id) id = `${type}-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+  // avoid duplicate for same ref/type
+  if (ref) {
+    const exists = notifications.find(n => n.ref === ref && n.type === type);
+    if (exists) return exists;
+  }
+
+  const n = { id, type, title, body, time, read: false, ref };
+  notifications.unshift(n);
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+  return n;
+}
+
+function markAsRead(id) {
+  const n = notifications.find(x => x.id === id);
+  if (n && !n.read) {
+    n.read = true;
+    saveNotifications();
+    renderNotificationPanel();
+    updateNotificationBadge();
+  }
+}
+
+function markAllRead() {
+  notifications.forEach(n => n.read = true);
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+}
+
+function clearAllNotifications() {
+  notifications = [];
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById('notificationBadge');
+  const unread = notifications.filter(n => !n.read).length;
+  if (badge) {
+    if (unread > 0) { badge.style.display = 'inline-block'; badge.textContent = unread; }
+    else { badge.style.display = 'none'; }
+  }
+}
+
+function renderNotificationPanel() {
+  const list = document.getElementById('notificationsList');
+  const empty = document.getElementById('noNotifications');
+  if (!list || !empty) return;
+  list.innerHTML = '';
+  if (!notifications || notifications.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  notifications.slice(0, 100).forEach(n => {
+    const item = document.createElement('div');
+    item.className = `notif-item ${n.read ? '' : 'unread'}`;
+    item.setAttribute('data-id', n.id);
+
+    const icon = document.createElement('div');
+    icon.className = 'notif-icon';
+    icon.textContent = n.type === 'exam' ? '📚' : (n.type === 'deadline' ? '⏰' : (n.type === 'achievement' ? '🏆' : '🔔'));
+
+    const body = document.createElement('div');
+    body.className = 'notif-body';
+    const h = document.createElement('div');
+    h.innerHTML = `<strong>${escapeHtml(n.title)}</strong>`;
+    const p = document.createElement('div');
+    p.textContent = n.body;
+    p.className = 'notif-time';
+    const time = document.createElement('div');
+    time.className = 'notif-time';
+    time.textContent = new Date(n.time).toLocaleString();
+
+    body.appendChild(h);
+    body.appendChild(p);
+    body.appendChild(time);
+
+    const actions = document.createElement('div');
+    actions.className = 'notif-actions';
+    const btn = document.createElement('button');
+    btn.className = 'view-btn small';
+    btn.textContent = n.read ? 'Read' : 'Mark read';
+    btn.addEventListener('click', () => {
+      markAsRead(n.id);
+    });
+
+    actions.appendChild(btn);
+
+    item.appendChild(icon);
+    item.appendChild(body);
+    item.appendChild(actions);
+
+    list.appendChild(item);
+  });
+}
+
+// Toggle panel visibility
+function toggleNotificationPanel(show) {
+  const panel = document.getElementById('notificationPanel');
+  const bell = document.getElementById('notificationBell');
+  if (!panel || !bell) return;
+  const isOpen = panel.style.display === 'block';
+  if (typeof show === 'boolean') {
+    panel.style.display = show ? 'block' : 'none';
+    bell.setAttribute('aria-expanded', show ? 'true' : 'false');
+  } else {
+    panel.style.display = isOpen ? 'none' : 'block';
+    bell.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+  }
+}
+
+
+// ==========================
+
 // Drag & Drop: Persist order
 // ==========================
 function enableDragAndDrop() {
@@ -616,6 +838,8 @@ function checkAchievements() {
       if (ach.check()) {
         analyticsData.unlockedAchievements.push(ach.id);
         triggerAchievementToast(ach.title);
+        // Add notification for achievement
+        addNotification({ type: 'achievement', title: `Achievement unlocked: ${ach.title}`, body: ach.desc, ref: `ach-${ach.id}` });
         newlyUnlocked = true;
       }
     }
@@ -788,6 +1012,9 @@ function addTask() {
   saveData();
   renderTasks();
 
+  // Refresh calendar to reflect any deadlines
+  renderCalendar();
+
   updateDeadlineAlerts();
 
 
@@ -862,6 +1089,7 @@ function createTaskEl(task) {
       analyticsData.completedTasksPerDay[todayStr] = (analyticsData.completedTasksPerDay[todayStr] || 0) + 1;
       analyticsData.categoryStats[task.category].completed = (analyticsData.categoryStats[task.category].completed || 0) + 1;
       updateAnalyticsStreak(todayStr);
+      updateProductivityRecords(todayStr);
 
       // Visual Feedback and Rewards
       triggerConfetti();
@@ -878,6 +1106,7 @@ function createTaskEl(task) {
         analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
       }
       analyticsData.categoryStats[task.category].completed = Math.max(0, analyticsData.categoryStats[task.category].completed - 1);
+      updateProductivityRecords(todayStr);
     }
 
     saveData();
@@ -1239,10 +1468,23 @@ function renderPerformance() {
 
   if (performanceData.length === 0) {
     container.innerHTML = `
-      <div class="empty-state">
-        <i class="ri-medal-line"></i>
-        <h3>No Records Found</h3>
-        <p>Add your subjects and marks to visualize your academic progress.</p>
+      <div class="empty-state enhanced-empty" id="performanceEmpty">
+        <svg width="140" height="90" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g4" x1="0" x2="1">
+              <stop offset="0" stop-color="#6366f1" />
+              <stop offset="1" stop-color="#06b6d4" />
+            </linearGradient>
+          </defs>
+          <rect x="10" y="18" width="120" height="54" rx="8" fill="url(#g4)" opacity="0.12" />
+          <path d="M26 34h88v6H26z" fill="#fff" opacity="0.06" />
+          <circle cx="110" cy="56" r="10" fill="url(#g4)" />
+        </svg>
+        <h3>No Academic Records</h3>
+        <p class="muted">Add subjects and their scores to visualize your academic performance.</p>
+        <div class="empty-cta-row">
+          <button class="view-btn primary" id="ctaAddSubject">Add Subject</button>
+        </div>
       </div>
     `;
     if (statsContainer) statsContainer.innerHTML = "";
@@ -1299,6 +1541,54 @@ function renderPerformance() {
     `;
   }
 }
+
+function renderSubjectTracker() {
+  const grid = document.getElementById("subjectsGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  if (!subjects || subjects.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1; text-align:center; padding:40px;">
+        <i class="ri-book-open-line" style="font-size: 2.5rem; opacity: 0.3;"></i>
+        <h3>No subjects added yet</h3>
+        <p>Create a subject to track homework, revision, and mastery progress.</p>
+      </div>
+    `;
+    return;
+  }
+
+  subjects.forEach(subject => {
+    const percentage = subject.total > 0 ? Math.round((subject.completed / subject.total) * 100) : 0;
+    const card = document.createElement("div");
+    card.className = "subject-card glass";
+    card.innerHTML = `
+      <div class="subject-card-header">
+        <div>
+          <h4>${escapeHtml(subject.title)}</h4>
+          <p>${subject.completed} / ${subject.total} topics completed</p>
+        </div>
+        <button class="icon-btn delete-btn" onclick="deleteSubject(${subject.id})" aria-label="Delete subject"><i class="ri-delete-bin-line"></i></button>
+      </div>
+      <div class="subject-progress-wrap">
+        <div class="subject-progress-bar">
+          <div class="subject-progress-fill" style="width: ${percentage}%"></div>
+        </div>
+        <span class="subject-progress-label">${percentage}% mastery</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+window.deleteSubject = (id) => {
+  if (confirm("Delete this subject record?")) {
+    subjects = subjects.filter(s => s.id !== id);
+    saveData();
+    renderSubjectTracker();
+    announce("Subject record removed.");
+  }
+};
 
 window.deletePerformance = (id) => {
   if (confirm("Delete this academic record?")) {
@@ -1441,6 +1731,11 @@ function renderCalendar() {
   if (!grid) return;
 
   grid.innerHTML = "";
+  // if week view active, render week
+  if (currentCalendarView === 'week') {
+    renderCalendarWeek(grid, currentCalendarDate);
+    return;
+  }
   const year = currentCalendarDate.getFullYear();
   const month = currentCalendarDate.getMonth();
   
@@ -1468,15 +1763,53 @@ function renderCalendar() {
     }
 
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayEvents = calendarEvents.filter(e => e.date === dateStr);
+    const dayEvents = [];
+    // calendar custom events
+    calendarEvents.filter(e => e.date === dateStr).forEach(e => dayEvents.push(Object.assign({}, e, { type: 'custom' })));
+    // tasks with deadline on this date
+    tasks.filter(t => t.deadline).forEach(t => {
+      const dt = getDatePart(t.deadline);
+      if (dt === dateStr) dayEvents.push({ id: t.id, title: t.text, type: 'task', deadline: t.deadline, category: t.category });
+    });
+    // exams
+    exams.forEach(ex => {
+      const exDate = new Date(ex.date);
+      const exDateStr = `${exDate.getFullYear()}-${String(exDate.getMonth()+1).padStart(2,'0')}-${String(exDate.getDate()).padStart(2,'0')}`;
+      if (exDateStr === dateStr) dayEvents.push({ id: ex.id, title: ex.title, type: 'exam', subject: ex.subject });
+    });
+    // focus sessions
+    (analyticsData.focusHistory || []).forEach(f => {
+      const fDate = new Date(f.timestamp);
+      const fDateStr = `${fDate.getFullYear()}-${String(fDate.getMonth()+1).padStart(2,'0')}-${String(fDate.getDate()).padStart(2,'0')}`;
+      if (fDateStr === dateStr) dayEvents.push({ id: f.timestamp, title: `Focus ${f.duration || f.minutes || ''}m`, type: 'focus' });
+    });
+    // daily goals (show on today only)
+    try {
+      const dg = JSON.parse(localStorage.getItem('daily_goals') || '[]');
+      if (dg && dg.length > 0) {
+        const todayStr = getFormattedDate(new Date());
+        if (todayStr === dateStr) dg.forEach(g => dayEvents.push({ id: g.id || g.text, title: g.text || 'Daily Goal', type: 'daily' }));
+      }
+    } catch(e) {}
 
     dayDiv.innerHTML = `<span class="day-number">${d}</span>`;
-    dayEvents.forEach(e => {
+    dayEvents.slice(0,3).forEach(e => {
       const eDiv = document.createElement("div");
-      eDiv.className = "event-pill-mini";
+      eDiv.className = `event-pill-mini ${e.type === 'task' ? 'event-task' : e.type === 'exam' ? 'event-exam' : e.type === 'focus' ? 'event-focus' : e.type === 'daily' ? 'event-daily' : 'event-custom'}`;
       eDiv.textContent = e.title;
+      eDiv.title = e.title;
       dayDiv.appendChild(eDiv);
     });
+
+    // highlight upcoming deadlines (within 48 hours)
+    const twoDaysAhead = new Date(); twoDaysAhead.setDate(twoDaysAhead.getDate()+2);
+    const todayISO = getFormattedDate(new Date());
+    const checkUpcoming = tasks.some(t => {
+      if (!t.deadline) return false;
+      const dpart = getDatePart(t.deadline);
+      return dpart === dateStr && new Date(t.deadline) <= twoDaysAhead && new Date(t.deadline) >= new Date();
+    });
+    if (checkUpcoming) dayDiv.classList.add('upcoming');
 
     dayDiv.onclick = () => {
       document.getElementById("eventDateInput").value = dateStr;
@@ -1522,6 +1855,53 @@ function initCalendarNotifier() {
   }, 30000);
 }
 
+function getDatePart(val) {
+  if (!val) return null;
+  // handle datetime-local value like 2026-05-23T14:00
+  if (typeof val === 'string' && val.indexOf('T') !== -1) return val.split('T')[0];
+  try {
+    const d = new Date(val);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  } catch (e) { return null; }
+}
+
+function renderCalendarWeek(grid, dateRef) {
+  grid.innerHTML = '';
+  const start = new Date(dateRef);
+  // set to start of week (Sunday)
+  start.setDate(start.getDate() - start.getDay());
+
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+
+    const col = document.createElement('div');
+    col.className = 'calendar-day';
+    col.innerHTML = `<span class="day-number">${day.getDate()}</span><div style="margin-top:22px; font-weight:600;">${day.toLocaleDateString(undefined,{weekday:'long'})}</div>`;
+
+    const dayEvents = [];
+    calendarEvents.filter(e => e.date === dateStr).forEach(e => dayEvents.push(Object.assign({}, e, { type: 'custom' })));
+    tasks.filter(t => t.deadline && getDatePart(t.deadline) === dateStr).forEach(t => dayEvents.push({ id: t.id, title: t.text, type: 'task', deadline: t.deadline, category: t.category }));
+    exams.forEach(ex => { const exDate = new Date(ex.date); const exDateStr = `${exDate.getFullYear()}-${String(exDate.getMonth()+1).padStart(2,'0')}-${String(exDate.getDate()).padStart(2,'0')}`; if (exDateStr === dateStr) dayEvents.push({ id: ex.id, title: ex.title, type: 'exam' }); });
+    (analyticsData.focusHistory || []).forEach(f => { const fDate = new Date(f.timestamp); const fDateStr = `${fDate.getFullYear()}-${String(fDate.getMonth()+1).padStart(2,'0')}-${String(fDate.getDate()).padStart(2,'0')}`; if (fDateStr === dateStr) dayEvents.push({ id: f.timestamp, title: `Focus ${f.duration || f.minutes || ''}m`, type: 'focus' }); });
+
+    dayEvents.forEach(e => {
+      const eDiv = document.createElement('div');
+      eDiv.className = `event-pill-mini ${e.type === 'task' ? 'event-task' : e.type === 'exam' ? 'event-exam' : e.type === 'focus' ? 'event-focus' : e.type === 'daily' ? 'event-daily' : 'event-custom'}`;
+      eDiv.textContent = e.title;
+      col.appendChild(eDiv);
+    });
+
+    col.onclick = () => {
+      document.getElementById('eventDateInput').value = dateStr;
+      document.getElementById('eventTitleInput').focus();
+    };
+
+    grid.appendChild(col);
+  }
+}
+
 function updateAnalyticsStreak(todayStr) {
   if (analyticsData.lastActiveDate === todayStr) return;
 
@@ -1540,6 +1920,71 @@ function updateAnalyticsStreak(todayStr) {
   }
 
   analyticsData.lastActiveDate = todayStr;
+}
+
+function computeDailyProductivityScore(dateStr) {
+  const completedTasks = analyticsData.completedTasksPerDay[dateStr] || 0;
+  const studyMinutes = analyticsData.dailyStudyMinutes[dateStr] || 0;
+  const streakBonus = analyticsData.lastActiveDate === dateStr ? (analyticsData.currentStreak || 0) * 5 : 0;
+  const score = Math.round((completedTasks * 35) + (studyMinutes * 1.4) + streakBonus);
+
+  analyticsData.dailyScoreHistory = analyticsData.dailyScoreHistory || {};
+  analyticsData.dailyScoreHistory[dateStr] = score;
+  return score;
+}
+
+function updateProductivityRecords(dateStr) {
+  analyticsData.dailyScoreHistory = analyticsData.dailyScoreHistory || {};
+  const score = computeDailyProductivityScore(dateStr);
+  const studyMinutes = analyticsData.dailyStudyMinutes[dateStr] || 0;
+  const completedTasks = analyticsData.completedTasksPerDay[dateStr] || 0;
+
+  if (!analyticsData.productivityRecords) {
+    analyticsData.productivityRecords = {
+      highestScore: 0,
+      bestProductiveDay: null,
+      highestTasksInDay: 0,
+      highestStudyMinutes: 0,
+      bestStudyDay: null
+    };
+  }
+
+  if (score > analyticsData.productivityRecords.highestScore) {
+    analyticsData.productivityRecords.highestScore = score;
+    analyticsData.productivityRecords.bestProductiveDay = dateStr;
+  }
+
+  if (completedTasks > analyticsData.productivityRecords.highestTasksInDay) {
+    analyticsData.productivityRecords.highestTasksInDay = completedTasks;
+    analyticsData.productivityRecords.bestProductiveDay = dateStr;
+  }
+
+  if (studyMinutes > analyticsData.productivityRecords.highestStudyMinutes) {
+    analyticsData.productivityRecords.highestStudyMinutes = studyMinutes;
+    analyticsData.productivityRecords.bestStudyDay = dateStr;
+  }
+
+  saveData();
+}
+
+function getTodayProductivityScore() {
+  const todayStr = getFormattedDate(new Date());
+  if (analyticsData.dailyScoreHistory && analyticsData.dailyScoreHistory[todayStr] != null) {
+    return analyticsData.dailyScoreHistory[todayStr];
+  }
+  return computeDailyProductivityScore(todayStr);
+}
+
+function getDailyHighScore() {
+  let highScore = 0;
+  let bestDay = null;
+  Object.entries(analyticsData.dailyScoreHistory || {}).forEach(([day, score]) => {
+    if (typeof score === 'number' && score > highScore) {
+      highScore = score;
+      bestDay = day;
+    }
+  });
+  return { score: highScore, day: bestDay };
 }
 
 // Helpers
@@ -1601,6 +2046,7 @@ function startTimer() {
       const fractionalMinutes = elapsedSeconds / 60;
       analyticsData.dailyStudyMinutes[todayStr] = (analyticsData.dailyStudyMinutes[todayStr] || 0) + fractionalMinutes;
       saveData();
+      updateProductivityRecords(todayStr);
     }
 
     updateDisplay();
@@ -1611,6 +2057,7 @@ function startTimer() {
 
       if (isStudy) {
         sendNotification("Session Complete!", "Study session complete! Take a well-deserved break ☕");
+        addNotification({ type: 'break', title: 'Study session complete', body: 'Time for a break ☕' });
         alert("Study session complete! Take a break.");
 
         // Log session in focus history
@@ -1624,6 +2071,9 @@ function startTimer() {
         if (analyticsData.focusHistory.length > 10) {
           analyticsData.focusHistory.shift();
         }
+
+        saveData();
+        renderCalendar();
 
         isStudy = false;
         currentTime = breakTime;
@@ -1644,6 +2094,7 @@ function startTimer() {
         checkAchievements();
       } else {
         sendNotification("Break Over!", "Break over! Time to focus back on your tasks ⚔️");
+        addNotification({ type: 'break', title: 'Break over', body: 'Break finished — back to study!' });
         alert("Break over! Back to study.");
 
         isStudy = true;
@@ -1982,6 +2433,23 @@ function updateAnalyticsDashboard() {
   const rateEl = document.getElementById("analyticsCompletionRate");
   if (rateEl) rateEl.textContent = `${completionRate}%`;
 
+<<<<<<< productivity-branch
+  const todayScoreEl = document.getElementById("analyticsDailyScore");
+  const dailyHighScoreEl = document.getElementById("analyticsDailyHighScore");
+  const bestDayEl = document.getElementById("analyticsBestProductiveDay");
+  const bestStudyRecordEl = document.getElementById("analyticsBestStudyRecord");
+
+  if (todayScoreEl) todayScoreEl.textContent = `${getTodayProductivityScore()}`;
+
+  const highScoreData = getDailyHighScore();
+  if (dailyHighScoreEl) dailyHighScoreEl.textContent = `${highScoreData.score}`;
+  if (bestDayEl) bestDayEl.textContent = highScoreData.day ? new Date(highScoreData.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—';
+  if (bestStudyRecordEl) {
+    const minutes = Math.round(analyticsData.productivityRecords?.highestStudyMinutes || 0);
+    bestStudyRecordEl.textContent = minutes > 0 ? `${minutes} min` : '—';
+  }
+
+
   const today = new Date();
   today.setHours(23, 59, 59, 999);
   const weekStart = new Date(today);
@@ -2244,6 +2712,125 @@ function initCompletionTrendChart() {
   });
 }
 
+// ----- Analytics Export helpers -----
+function gatherAnalyticsData() {
+  const analytics = window.quests_analytics || {};
+  // Provide safe defaults
+  return {
+    studyMinutes: analytics.dailyStudyMinutes || [],
+    completedPerDay: analytics.completedTasksPerDay || [],
+    focusHistory: analytics.focusHistory || [],
+    currentStreak: analytics.currentStreak || 0,
+    longestStreak: analytics.longestStreak || 0,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportAnalyticsCSV() {
+  const data = gatherAnalyticsData();
+  let csv = 'section,metric,day,value\n';
+  // Study minutes
+  data.studyMinutes.forEach((m, i) => { csv += `study,minutes,${i+1},${m}\n`; });
+  // Completed tasks
+  data.completedPerDay.forEach((c, i) => { csv += `completed,tasks,${i+1},${c}\n`; });
+  // Focus history
+  data.focusHistory.forEach((f, i) => { csv += `focus,session,${i+1},${f.duration || f.minutes || 0}\n`; });
+  csv += `streak,current, ,${data.currentStreak}\n`;
+  csv += `streak,longest, ,${data.longestStreak}\n`;
+  csv += `generated,at, ,${data.generatedAt}\n`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  downloadBlob('quests_analytics_export.csv', blob);
+}
+
+function exportChartsPNG() {
+  const canvasIds = ['studyHoursChart', 'categoryChart', 'completionTrendChart'];
+  canvasIds.forEach((id) => {
+    const c = document.getElementById(id);
+    if (c && c.toDataURL) {
+      const dataUrl = c.toDataURL('image/png');
+      // trigger download
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  });
+}
+
+async function exportAnalyticsPDF() {
+  // Ensure jsPDF available
+  let jsPDFGlobal = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+  if (!jsPDFGlobal) {
+    // try to load UMD export
+    if (window.jspdf && window.jspdf.jsPDF) jsPDFGlobal = window.jspdf.jsPDF;
+  }
+  if (!jsPDFGlobal) {
+    console.warn('jsPDF not found; attempting dynamic load');
+    await new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+    jsPDFGlobal = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+  }
+  if (!jsPDFGlobal) {
+    alert('PDF export unavailable (jsPDF failed to load)');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const margin = 40;
+  let y = margin;
+  doc.setFontSize(16);
+  doc.text('Quests Analytics Export', margin, y);
+  y += 22;
+  doc.setFontSize(10);
+  const data = gatherAnalyticsData();
+  doc.text(`Generated: ${data.generatedAt}`, margin, y);
+  y += 18;
+  doc.text(`Current streak: ${data.currentStreak} days`, margin, y);
+  y += 18;
+  doc.text(`Longest streak: ${data.longestStreak} days`, margin, y);
+  y += 24;
+
+  // add charts as images if present
+  const canvasIds = ['studyHoursChart', 'categoryChart', 'completionTrendChart'];
+  for (const id of canvasIds) {
+    const c = document.getElementById(id);
+    if (c && c.toDataURL) {
+      const img = c.toDataURL('image/png');
+      const imgProps = doc.getImageProperties(img);
+      const pdfWidth = doc.internal.pageSize.getWidth() - margin * 2;
+      const scale = Math.min(1, pdfWidth / imgProps.width);
+      const imgHeight = imgProps.height * scale;
+      if (y + imgHeight > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.addImage(img, 'PNG', margin, y, pdfWidth, imgHeight);
+      y += imgHeight + 12;
+    }
+  }
+
+  doc.save('quests_analytics_export.pdf');
+}
+
 // Chart toggle click listeners for completion trend
 document.getElementById("btnWeeklyTrend")?.addEventListener("click", () => {
   const weekly = document.getElementById("btnWeeklyTrend");
@@ -2274,7 +2861,34 @@ function renderFocusHistory() {
 
   const history = analyticsData.focusHistory || [];
   if (history.length === 0) {
-    container.innerHTML = `<div class="empty-history" style="text-align: center; color: var(--textLight); padding: 20px;">No sessions logged yet.</div>`;
+    container.innerHTML = `
+      <div class="empty-state enhanced-empty" id="focusEmpty">
+        <svg width="140" height="90" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g3" x1="0" x2="1">
+              <stop offset="0" stop-color="#f59e0b" />
+              <stop offset="1" stop-color="#f43f5e" />
+            </linearGradient>
+          </defs>
+          <rect x="8" y="18" width="124" height="54" rx="8" fill="url(#g3)" opacity="0.12" />
+          <path d="M28 40h84v6H28z" fill="#fff" opacity="0.06" />
+          <circle cx="110" cy="56" r="10" fill="url(#g3)" />
+        </svg>
+        <h3>No Focus Sessions Yet</h3>
+        <p class="muted">Track study sessions with the Pomodoro timer to build momentum.</p>
+        <div class="empty-cta-row">
+          <button class="view-btn primary" id="ctaStartSession">Start Focus Session</button>
+          <button class="view-btn" id="ctaCreateTaskFromHistory">Create Task</button>
+        </div>
+      </div>
+    `;
+    // Attach CTA handlers after inserting
+    setTimeout(() => {
+      const startBtn = document.getElementById('ctaStartSession');
+      const createBtn = document.getElementById('ctaCreateTaskFromHistory');
+      if (startBtn) startBtn.addEventListener('click', () => { startTimer(); });
+      if (createBtn) createBtn.addEventListener('click', () => { document.getElementById('taskInput').focus(); });
+    }, 0);
     return;
   }
 
@@ -2510,6 +3124,7 @@ function updateDeadlineAlerts() {
     // Send browser notification for tasks reaching critical urgency
     if (urgencyData.urgency === "critical") {
       sendNotification("Urgent Deadline!", `COMPLETE ${task.text} TASK ASAP`);
+      addNotification({ type: 'deadline', title: `Deadline: ${task.text}`, body: `${urgencyData.formatted} left`, ref: `task-deadline-${task.id}` });
     }
 
 
@@ -2847,10 +3462,79 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWeeklyStreak();
   updateDisplay();
   renderPerformance();
+  renderFocusHistory();
   renderTimetable();
   renderCalendar();
   renderProfile();
   renderSubjectTracker();
+
+<<<<<<< productivity-branch
+  // Notifications init
+  loadNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+
+  const bell = document.getElementById('notificationBell');
+  const panel = document.getElementById('notificationPanel');
+  const markAllBtn = document.getElementById('markAllReadBtn');
+  const clearAllBtn = document.getElementById('clearAllNotifBtn');
+
+  if (bell) {
+    bell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNotificationPanel();
+    });
+  }
+
+  // Close panel if clicking outside
+  document.addEventListener('click', (e) => {
+    if (!panel) return;
+    const target = e.target;
+    if (!panel.contains(target) && !bell.contains(target)) {
+      panel.style.display = 'none';
+      if (bell) bell.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  if (markAllBtn) markAllBtn.addEventListener('click', () => markAllRead());
+  if (clearAllBtn) clearAllBtn.addEventListener('click', () => clearAllNotifications());
+
+  // CTA wiring for empty states
+  const ctaCreateTask = document.getElementById('ctaCreateTask');
+  if (ctaCreateTask) ctaCreateTask.addEventListener('click', () => { document.getElementById('taskInput').focus(); });
+
+  const ctaBrowseTemplates = document.getElementById('ctaBrowseTemplates');
+  if (ctaBrowseTemplates) ctaBrowseTemplates.addEventListener('click', () => { document.getElementById('taskTemplate').focus(); });
+
+  const ctaUploadFiles = document.getElementById('ctaUploadFiles');
+  if (ctaUploadFiles) ctaUploadFiles.addEventListener('click', () => { document.getElementById('vaultFileInput').click(); });
+
+  const vaultBrowseBtnSmall = document.getElementById('vaultBrowseBtnSmall');
+  if (vaultBrowseBtnSmall) vaultBrowseBtnSmall.addEventListener('click', () => { document.getElementById('vaultFileInput').click(); });
+
+  const ctaAddSubject = document.getElementById('ctaAddSubject');
+  if (ctaAddSubject) ctaAddSubject.addEventListener('click', () => { const s = document.getElementById('subjectInputForm'); if (s) { s.style.display='grid'; s.querySelector('input')?.focus(); } });
+
+  // Export menu handlers
+  const exportBtn = document.getElementById('exportBtn');
+  const exportMenu = document.getElementById('exportMenu');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const exportPngBtn = document.getElementById('exportPngBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+  if (exportBtn && exportMenu) {
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportMenu.style.display = exportMenu.style.display === 'block' ? 'none' : 'block';
+    });
+  }
+
+  document.addEventListener('click', () => { if (exportMenu) exportMenu.style.display = 'none'; });
+
+  if (exportCsvBtn) exportCsvBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsCSV(); exportMenu.style.display='none'; });
+  if (exportPngBtn) exportPngBtn.addEventListener('click', (e) => { e.stopPropagation(); exportChartsPNG(); exportMenu.style.display='none'; });
+  if (exportPdfBtn) exportPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsPDF(); exportMenu.style.display='none'; });
+
 
   // Footer: set dynamic year and small accessibility tweaks
   const footerCopyright = document.getElementById('footerCopyright');
@@ -2988,6 +3672,9 @@ document.addEventListener("DOMContentLoaded", () => {
     currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
     renderCalendar();
   });
+
+  document.getElementById('calViewMonth')?.addEventListener('click', (e) => { currentCalendarView = 'month'; document.getElementById('calViewMonth')?.classList.add('active'); document.getElementById('calViewWeek')?.classList.remove('active'); renderCalendar(); });
+  document.getElementById('calViewWeek')?.addEventListener('click', (e) => { currentCalendarView = 'week'; document.getElementById('calViewWeek')?.classList.add('active'); document.getElementById('calViewMonth')?.classList.remove('active'); renderCalendar(); });
 
   document.getElementById("addEventBtn")?.addEventListener("click", () => {
     const title = document.getElementById("eventTitleInput").value.trim();
@@ -3242,7 +3929,9 @@ function showTaskPopup(message) {
     setTimeout(() => popup.remove(), 600);
   }, 3500);
 
+
 }
+
 
 }
 
@@ -3299,7 +3988,16 @@ if (addExamBtn) {
 
     saveData();
     renderExams();
+
+    renderCalendar();
     announce(`Added exam: ${title}`);
+
+    // Add notification for new exam tracked
+    addNotification({ type: 'exam', title: `Exam tracked: ${title}`, body: `${subject} — ${new Date(exam.date).toLocaleString()}`, ref: `exam-${exam.id}` });
+
+
+    announce(`Added exam: ${title}`);
+
 
     // Clear form
     document.getElementById("examTitle").value = "";
@@ -3369,6 +4067,9 @@ function updateExamsCountdown() {
       // Trigger notification once if < 24h
       if (!notifiedExams.has(exam.id)) {
         sendNotification("Urgent Exam!", `${exam.title} is in less than 24 hours!`);
+
+        addNotification({ type: 'exam', title: `Exam soon: ${exam.title}`, body: `${exam.subject} in <24 hours`, ref: `exam-urgent-${exam.id}` });
+
         notifiedExams.add(exam.id);
       }
     } else if (timeDiff < 3 * 24 * 60 * 60 * 1000) {
@@ -3933,5 +4634,9 @@ function renderVault() {
 
     vaultFilesGrid.appendChild(card);
   });
+
 }
+
+}
+
 
