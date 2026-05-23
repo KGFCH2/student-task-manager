@@ -228,6 +228,7 @@
         </button>
         <button class="tab-btn" id="tabBtnBookmarks" data-tab="bookmarks" role="tab" aria-selected="false" aria-controls="bookmarks-tab">
           <i class="ri-bookmark-3-line"></i> Bookmarks
+
         </button>
         <button class="tab-btn" id="tabBtnPerformance" data-tab="performance" role="tab" aria-selected="false" aria-controls="performance-tab">
           <i class="ri-medal-line"></i> Academic Performance
@@ -362,17 +363,6 @@
             <!-- DEADLINE ALERTS -->
             <div class="deadline-alerts" id="deadlineAlerts"></div>
 
-            <!-- DAILY QUEST -->
-            <div class="daily-quest">
-              <div>
-                <h3>Daily Quest</h3>
-                <p>Complete 5 tasks today to earn bonus XP ⚡</p>
-              </div>
-              <div class="quest-progress">
-                <span id="questText">0 / 5</span>
-              </div>
-            </div>
-
             <!-- TASKS -->
             <div class="task-list-wrapper">
               <div class="task-list" id="taskList">
@@ -403,6 +393,41 @@
 
               <div class="board-columns" id="boardColumns" style="display: none;">
                 <!-- Populate columns dynamically in JS -->
+              </div>
+            </div>
+
+            <!-- Syllabus Checklist Panel (below tasks, above daily quest) -->
+            <aside class="syllabus-panel glass" id="syllabusPanel" style="display: none;">
+              <div class="syllabus-header">
+                <h3>Syllabus Checklist</h3>
+                <div class="syllabus-progress">
+                  <div class="syllabus-progress-fill" id="syllabusProgressFill" style="width:0%"></div>
+                </div>
+                <span id="syllabusProgressText">0/0</span>
+              </div>
+
+              <div class="syllabus-controls">
+                <input id="syllabusInput" placeholder="Add topic or chapter..." aria-label="Add syllabus item">
+                <button id="addSyllabusBtn" class="view-btn small">Add</button>
+                <button id="applySyllabusBtn" class="view-btn small">Import to Tasks</button>
+              </div>
+
+              <ul id="syllabusList" class="syllabus-list" aria-live="polite"></ul>
+
+              <div class="syllabus-actions">
+                <button id="completeAllSyllabus" class="view-btn small">Mark all complete</button>
+                <button id="clearSyllabusBtn" class="view-btn small danger">Clear</button>
+              </div>
+            </aside>
+
+            <!-- DAILY QUEST -->
+            <div class="daily-quest">
+              <div>
+                <h3>Daily Quest</h3>
+                <p>Complete 5 tasks today to earn bonus XP ⚡</p>
+              </div>
+              <div class="quest-progress">
+                <span id="questText">0 / 5</span>
               </div>
             </div>
           </div>

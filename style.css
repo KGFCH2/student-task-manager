@@ -4112,6 +4112,45 @@ body.light .view-btn.active {
   margin-top: 10px;
 }
 
+/* Layout for task list and syllabus panel */
+.task-list-wrapper {
+  display: block;
+  width: 100%;
+}
+
+.syllabus-panel {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.syllabus-header {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.syllabus-header h3 { font-size: 16px; margin: 0; }
+.syllabus-progress { flex: 1; height: 8px; background: rgba(255,255,255,0.03); border-radius: 999px; overflow: hidden; }
+.syllabus-progress-fill { height: 100%; background: linear-gradient(90deg,var(--primary),var(--secondary)); width:0%; transition: width 0.35s ease; }
+.syllabus-controls { display:flex; gap:8px; }
+.syllabus-controls input { flex:1; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--text); }
+.syllabus-list { list-style:none; margin:0; padding:0; overflow:auto; max-height:320px; display:flex; flex-direction:column; gap:8px; }
+.syllabus-list li { display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; background: rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.02); }
+.syllabus-list li .remove-syllabus { margin-left:auto; }
+.syllabus-actions { display:flex; gap:8px; justify-content:flex-end; }
+
+@media (max-width: 1100px) {
+  .task-list-wrapper { width: 100%; }
+  .syllabus-panel { order: 2; }
+}
+
 @media (max-width: 1024px) {
   .board-columns {
     grid-template-columns: repeat(2, 1fr);

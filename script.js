@@ -2550,7 +2550,7 @@ function updateAnalyticsDashboard() {
     });
   }
 
-<<<<<<< HEAD
+
   loadData();
   updateStreakMetrics();
   updateGamification();
@@ -2564,7 +2564,7 @@ function updateAnalyticsDashboard() {
   renderCalendar();
   renderProfile();
   renderSubjectTracker();
-=======
+
   // Close panel if clicking outside
   document.addEventListener('click', (e) => {
     if (!panel) return;
@@ -3804,6 +3804,155 @@ function renderVault() {
 
     vaultFilesGrid.appendChild(card);
   });
+
+}
+
+  // ----------------------
+  // Syllabus Checklist JS
+  // ----------------------
+
+  function getSyllabusItems() {
+    try { return JSON.parse(localStorage.getItem('syllabus_items') || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function saveSyllabusItems(items) {
+    localStorage.setItem('syllabus_items', JSON.stringify(items));
+  }
+
+  function renderSyllabus() {
+    const list = document.getElementById('syllabusList');
+    const fill = document.getElementById('syllabusProgressFill');
+    const text = document.getElementById('syllabusProgressText');
+    if (!list || !fill || !text) return;
+    const items = getSyllabusItems();
+    list.innerHTML = '';
+    if (!items || items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'muted';
+      empty.textContent = 'No syllabus items. Add topics to track completion.';
+      list.appendChild(empty);
+      fill.style.width = '0%';
+      text.textContent = '0/0';
+      return;
+    }
+
+    let completed = 0;
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.dataset.id = item.id;
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!item.completed;
+      cb.addEventListener('change', () => toggleSyllabusItem(item.id));
+
+      const label = document.createElement('div');
+      label.textContent = item.text;
+      label.style.marginLeft = '8px';
+      if (item.completed) { label.style.textDecoration = 'line-through'; label.style.opacity = '0.7'; completed++; }
+
+      const remove = document.createElement('button');
+      remove.className = 'icon-btn remove-syllabus';
+      remove.innerHTML = '<i class="ri-delete-bin-line"></i>';
+      remove.title = 'Remove';
+      remove.addEventListener('click', () => removeSyllabusItem(item.id));
+
+      li.appendChild(cb);
+      li.appendChild(label);
+      li.appendChild(remove);
+      list.appendChild(li);
+    });
+
+    const pct = items.length ? Math.round((completed / items.length) * 100) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = `${completed}/${items.length}`;
+  }
+
+  function addSyllabusItem(text) {
+    if (!text || !text.trim()) return;
+    const items = getSyllabusItems();
+    items.push({ id: Date.now() + Math.floor(Math.random()*1000), text: text.trim(), completed: false });
+    saveSyllabusItems(items);
+    renderSyllabus();
+    announce('Syllabus item added.');
+  }
+
+  function toggleSyllabusItem(id) {
+    const items = getSyllabusItems();
+    const it = items.find(i => String(i.id) === String(id));
+    if (!it) return;
+    it.completed = !it.completed;
+    saveSyllabusItems(items);
+    renderSyllabus();
+    if (it.completed) { coins += 2; saveData(); }
+  }
+
+  function removeSyllabusItem(id) {
+    let items = getSyllabusItems();
+    items = items.filter(i => String(i.id) !== String(id));
+    saveSyllabusItems(items);
+    renderSyllabus();
+  }
+
+  function completeAllSyllabus() {
+    const items = getSyllabusItems().map(i => ({ ...i, completed: true }));
+    saveSyllabusItems(items);
+    renderSyllabus();
+    announce('All syllabus items marked complete.');
+  }
+
+  function clearSyllabus() {
+    localStorage.removeItem('syllabus_items');
+    renderSyllabus();
+    announce('Syllabus cleared.');
+  }
+
+  function applySyllabusToTasks() {
+    const items = getSyllabusItems();
+    if (!items || items.length === 0) { announce('No syllabus items to import.'); return; }
+    const existing = new Set(tasks.map(t => t.text.toLowerCase()));
+    let created = 0;
+    items.forEach(it => {
+      if (!existing.has(it.text.toLowerCase())) {
+        tasks.push({ id: Date.now() + Math.floor(Math.random()*1000), text: it.text, category: 'Revision', priority: 'Medium', completed: !!it.completed, createdAt: getFormattedDateTime(new Date()), deadline: null, penaltyApplied: false });
+        created++;
+      }
+    });
+    if (created) { saveData(); renderTasks(); announce(`${created} syllabus items imported as tasks.`); }
+    else announce('No new syllabus items to import.');
+  }
+
+  // Init handlers
+  document.addEventListener('DOMContentLoaded', () => {
+    const addBtn = document.getElementById('addSyllabusBtn');
+    const input = document.getElementById('syllabusInput');
+    const clearBtn = document.getElementById('clearSyllabusBtn');
+    const completeAllBtn = document.getElementById('completeAllSyllabus');
+    const applyBtn = document.getElementById('applySyllabusBtn');
+    const panel = document.getElementById('syllabusPanel');
+
+    if (addBtn && input) {
+      addBtn.addEventListener('click', () => { addSyllabusItem(input.value); input.value = ''; });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { addSyllabusItem(input.value); input.value = ''; } });
+    }
+    if (clearBtn) clearBtn.addEventListener('click', clearSyllabus);
+    if (completeAllBtn) completeAllBtn.addEventListener('click', completeAllSyllabus);
+    if (applyBtn) applyBtn.addEventListener('click', applySyllabusToTasks);
+
+    function updateSyllabusVisibility() {
+      const boardActive = document.getElementById('boardViewBtn')?.classList.contains('active');
+      if (panel) panel.style.display = boardActive ? 'block' : 'none';
+    }
+    renderSyllabus();
+    updateSyllabusVisibility();
+
+    const boardBtn = document.getElementById('boardViewBtn');
+    const listBtn = document.getElementById('listViewBtn');
+    if (boardBtn) boardBtn.addEventListener('click', () => setTimeout(updateSyllabusVisibility, 100));
+    if (listBtn) listBtn.addEventListener('click', () => setTimeout(updateSyllabusVisibility, 100));
+  });
+
 
 }
 
