@@ -226,6 +226,9 @@
         <button class="tab-btn" id="tabBtnCalendar" data-tab="calendar" role="tab" aria-selected="false" aria-controls="calendar-tab">
           <i class="ri-calendar-event-line"></i> Event Calendar
         </button>
+        <button class="tab-btn" id="tabBtnMotivation" data-tab="motivation" role="tab" aria-selected="false" aria-controls="motivation-tab">
+          <i class="ri-flashlight-line"></i> Motivation
+        </button>
       </div>
       
       <!-- TAB 1: QUESTS & TIMER -->
@@ -1371,6 +1374,93 @@
       </div>
 
       <!-- APP FOOTER -->
+      <!-- TAB: MOTIVATION -->
+      <div id="motivation-tab" class="tab-content" role="tabpanel" aria-labelledby="tabBtnMotivation">
+        <div class="motivation-page">
+          <!-- Hero Section -->
+          <section class="hero" aria-labelledby="hero-heading">
+            <div class="hero__badge">Motivation</div>
+            <h2 id="hero-heading" class="hero__title">Stay Motivated Every Day</h2>
+            <p class="hero__lead">Small consistent steps compound into extraordinary results. Use these prompts, tips, and quotes to build focus, discipline, and momentum for your studies.</p>
+            <ul class="badges badges--productivity" role="list">
+              <li class="badge"><i class="fa fa-sun"></i> Daily Inspiration</li>
+              <li class="badge"><i class="fa fa-bullseye"></i> Focus Boost</li>
+              <li class="badge"><i class="fa fa-smile"></i> Positive Mindset</li>
+            </ul>
+          </section>
+
+          <!-- Quotes Grid -->
+          <section class="quotes" aria-labelledby="quotes-heading">
+            <h3 id="quotes-heading" class="section__title">Motivational Quotes</h3>
+            <div class="quote-grid">
+              <article class="quote-card" aria-labelledby="q1-title">
+                <div class="quote-card__icon"><i class="fa fa-book-open"></i></div>
+                <blockquote class="quote" id="q1-title">"The secret of getting ahead is getting started."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Mark Twain</span><span class="quote-card__badge">Study Motivation</span></div>
+              </article>
+              <article class="quote-card" aria-labelledby="q2-title">
+                <div class="quote-card__icon"><i class="fa fa-hourglass-half"></i></div>
+                <blockquote class="quote" id="q2-title">"Discipline is choosing between what you want now and what you want most."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Abraham Lincoln</span><span class="quote-card__badge">Discipline</span></div>
+              </article>
+              <article class="quote-card" aria-labelledby="q3-title">
+                <div class="quote-card__icon"><i class="fa fa-rocket"></i></div>
+                <blockquote class="quote" id="q3-title">"Success is the sum of small efforts, repeated day in and day out."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Robert Collier</span><span class="quote-card__badge">Success Mindset</span></div>
+              </article>
+              <article class="quote-card" aria-labelledby="q4-title">
+                <div class="quote-card__icon"><i class="fa fa-repeat"></i></div>
+                <blockquote class="quote" id="q4-title">"Small disciplines repeated with consistency every day lead to great achievements."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Unknown</span><span class="quote-card__badge">Consistency</span></div>
+              </article>
+              <article class="quote-card" aria-labelledby="q5-title">
+                <div class="quote-card__icon"><i class="fa fa-lightbulb"></i></div>
+                <blockquote class="quote" id="q5-title">"I focus on progress, not perfection. Each session moves me forward."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Personal Affirmation</span><span class="quote-card__badge">Productivity</span></div>
+              </article>
+              <article class="quote-card" aria-labelledby="q6-title">
+                <div class="quote-card__icon"><i class="fa fa-brain"></i></div>
+                <blockquote class="quote" id="q6-title">"Turn setbacks into lessons; growth follows intentional reflection."</blockquote>
+                <div class="quote-card__meta"><span class="quote-card__author">— Learning Mindset</span><span class="quote-card__badge">Growth</span></div>
+              </article>
+            </div>
+          </section>
+
+          <!-- Daily Motivation Banner -->
+          <section class="daily-banner" aria-labelledby="daily-heading">
+            <h4 id="daily-heading" class="section__label">Quote of the Day</h4>
+            <div class="daily-banner__inner">
+              <div class="daily-banner__glow" aria-hidden="true"></div>
+              <blockquote class="daily-banner__quote">"Mastery begins with showing up. Do the work today and the future will thank you."</blockquote>
+              <cite class="daily-banner__author">— Elena Ramirez, Academic Coach</cite>
+            </div>
+          </section>
+
+          <!-- Productivity Tips -->
+          <section class="tips" aria-labelledby="tips-heading">
+            <h3 id="tips-heading" class="section__title">Productivity Tips</h3>
+            <div class="tips-grid">
+              <article class="tip-card"><h5 class="tip-card__title">Avoiding Distractions</h5><p class="tip-card__body">Create a dedicated study space, silence notifications, and use focused intervals (25–50 mins) followed by short breaks.</p></article>
+              <article class="tip-card"><h5 class="tip-card__title">Effective Study Methods</h5><p class="tip-card__body">Use active recall and spaced repetition. Teach back concepts to check true understanding.</p></article>
+              <article class="tip-card"><h5 class="tip-card__title">Time Management</h5><p class="tip-card__body">Prioritize tasks with an impact/effort matrix and block peak-focus time for deep work.</p></article>
+              <article class="tip-card"><h5 class="tip-card__title">Focus Improvement</h5><p class="tip-card__body">Train attention with single-task sessions, remove multi-tasking, and practice brief mindfulness before starting.</p></article>
+              <article class="tip-card"><h5 class="tip-card__title">Consistency Habits</h5><p class="tip-card__body">Build small daily rituals (study start routine, review, and reflection) to make progress automatic.</p></article>
+            </div>
+          </section>
+
+          <!-- Achievements -->
+          <section class="achievements" aria-labelledby="achieve-heading">
+            <h3 id="achieve-heading" class="section__title">Achievements</h3>
+            <div class="achievements__grid">
+              <div class="achievement-card"><div class="achievement-card__icon"><i class="fa fa-fire"></i></div><div class="achievement-card__body"><div class="achievement-card__value">12</div><div class="achievement-card__label">Day Study Streak</div></div></div>
+              <div class="achievement-card"><div class="achievement-card__icon"><i class="fa fa-check"></i></div><div class="achievement-card__body"><div class="achievement-card__value">48</div><div class="achievement-card__label">Tasks Completed</div></div></div>
+              <div class="achievement-card"><div class="achievement-card__icon"><i class="fa fa-chart-line"></i></div><div class="achievement-card__body"><div class="achievement-card__value">76%</div><div class="achievement-card__label">Weekly Progress</div></div></div>
+              <div class="achievement-card"><div class="achievement-card__icon"><i class="fa fa-clock"></i></div><div class="achievement-card__body"><div class="achievement-card__value">9.5h</div><div class="achievement-card__label">Focus Hours</div></div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <footer class="app-footer">
         <div class="footer-content">
           <div class="footer-brand">
