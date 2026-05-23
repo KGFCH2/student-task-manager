@@ -5,7 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TaskQuest • Gamified Productivity</title>
-
+  <!-- Security Headers -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https:;">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +19,8 @@
   
   <!-- Chart.js for analytics visualization -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -36,6 +40,18 @@
       <div class="logo-box">
         <div class="logo">
           <i class="ri-gamepad-fill"></i>
+        </div>
+
+        <!-- Export Controls -->
+        <div class="analytics-export-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;position:relative;">
+          <div class="export-group">
+            <button class="view-btn" id="exportBtn"><i class="ri-download-2-line"></i> Export</button>
+            <div id="exportMenu" class="export-menu" style="display:none; position:absolute; right:0; background:var(--card); border:1px solid var(--border); padding:8px; border-radius:8px; box-shadow:var(--shadow); z-index:50;">
+              <button class="view-btn" id="exportCsvBtn">Export CSV</button>
+              <button class="view-btn" id="exportPngBtn">Export Charts (PNG)</button>
+              <button class="view-btn" id="exportPdfBtn">Export PDF</button>
+            </div>
+          </div>
         </div>
         <div>
           <h1>TaskQuest</h1>
@@ -158,7 +174,26 @@
             <button class="theme-dot" data-theme="cyberpunk" aria-label="Cyberpunk Theme" style="background: linear-gradient(135deg, #ec4899, #3b82f6);"></button>
             <button class="theme-dot" data-theme="sunset" aria-label="Sunset Theme" style="background: linear-gradient(135deg, #f59e0b, #f43f5e);"></button>
           </div>
-          <a class="topbar-link leaderboard-link" href="leaderboard.html" aria-label="Open Real-Time Leaderboard"><i class="ri-trophy-line"></i> Leaderboard</a>
+          <!-- Notification Bell -->
+          <div class="notification-wrap">
+            <button id="notificationBell" class="icon-btn notification-bell" aria-label="Notifications" title="Notifications" aria-expanded="false">
+              <i class="ri-notification-3-line"></i>
+              <span id="notificationBadge" class="notif-badge" aria-hidden="true" style="display:none">0</span>
+            </button>
+            <div id="notificationPanel" class="notification-panel" aria-hidden="true">
+              <div class="notification-panel-header">
+                <strong>Notifications</strong>
+                <div>
+                  <button id="markAllReadBtn" class="view-btn small">Mark all read</button>
+                  <button id="clearAllNotifBtn" class="view-btn small danger">Clear all</button>
+                </div>
+              </div>
+              <div id="notificationsList" class="notifications-list">
+                <!-- notifications populated here -->
+              </div>
+              <div id="noNotifications" class="notif-empty">You're all caught up 🎉</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -200,11 +235,20 @@
           <div class="workspace-main">
             <!-- ADD TASK -->
             <div class="task-box">
-              <input
-                type="text"
-                id="taskInput"
-                placeholder="Enter your next task..."
-              />
+              <div class="task-input-group" style="display:flex;gap:8px;align-items:center;">
+                <select id="taskTemplate" aria-label="Quick templates" title="Quick templates" style="border-radius:12px;padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:var(--text);">
+                  <option value="">Templates</option>
+                  <option value='{"text":"Read chapter summary","category":"Theory","priority":"Medium"}'>Read chapter</option>
+                  <option value='{"text":"Practice problem set","category":"Practical","priority":"High"}'>Practice problems</option>
+                  <option value='{"text":"Finish assignment","category":"Assignment","priority":"High"}'>Finish assignment</option>
+                  <option value='{"text":"Revision session","category":"Revision","priority":"Low"}'>Revision session</option>
+                </select>
+                <input
+                  type="text"
+                  id="taskInput"
+                  placeholder="Enter your next task..."
+                />
+              </div>
               <select id="categorySelect" aria-label="Task category">
                 <option value="Theory">📘 Theory</option>
                 <option value="Practical">🧪 Practical</option>
@@ -284,11 +328,29 @@
             <!-- TASKS -->
             <div class="task-list-wrapper">
               <div class="task-list" id="taskList">
-                <div class="empty-state">
-                  <i class="ri-ghost-2-line"></i>
-                  <h3>No Tasks Yet</h3>
-                  <p>Add tasks and start your productivity adventure.</p>
-                </div>
+                <div class="empty-state enhanced-empty" id="tasksEmpty">
+                    <!-- Simple SVG illustration -->
+                    <svg width="120" height="90" viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="g1" x1="0" x2="1">
+                          <stop offset="0" stop-color="#8b5cf6" />
+                          <stop offset="1" stop-color="#06b6d4" />
+                        </linearGradient>
+                      </defs>
+                      <rect x="6" y="18" width="108" height="60" rx="8" fill="url(#g1)" opacity="0.12" />
+                      <rect x="14" y="26" width="92" height="14" rx="4" fill="#fff" opacity="0.06" />
+                      <rect x="14" y="46" width="64" height="10" rx="4" fill="#fff" opacity="0.06" />
+                      <rect x="14" y="60" width="44" height="8" rx="4" fill="#fff" opacity="0.06" />
+                      <circle cx="96" cy="50" r="12" fill="url(#g1)" />
+                      <path d="M90 46 L102 54" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <h3>No Tasks Yet</h3>
+                    <p class="muted">Your quest list is empty — time to create your first task and get rewarded!</p>
+                    <div class="empty-cta-row">
+                      <button class="view-btn primary" id="ctaCreateTask">Create Your First Task</button>
+                      <button class="view-btn" id="ctaBrowseTemplates">Use Template</button>
+                    </div>
+                  </div>
               </div>
 
               <div class="board-columns" id="boardColumns" style="display: none;">
@@ -753,14 +815,35 @@
             <i class="ri-search-line"></i>
             <input type="text" id="vaultSearch" placeholder="Search files by name..." />
           </div>
+          <div style="margin-left:10px;">
+            <button class="view-btn" id="clearVaultBtn" title="Clear all files from vault" style="background:#ef4444;color:white;">
+              <i class="ri-delete-bin-line"></i> Clear Vault
+            </button>
+          </div>
         </div>
 
         <!-- Files Grid -->
         <div class="vault-files-grid" id="vaultFilesGrid">
           <!-- Dynamically populated -->
-          <div class="vault-empty-state" id="vaultEmptyState">
-            <i class="ri-file-damage-line"></i>
-            <p>Your vault is empty. Upload some study materials!</p>
+          <div class="vault-empty-state enhanced-empty" id="vaultEmptyState">
+            <svg width="120" height="90" viewBox="0 0 120 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="g2" x1="0" x2="1">
+                  <stop offset="0" stop-color="#10b981" />
+                  <stop offset="1" stop-color="#06b6d4" />
+                </linearGradient>
+              </defs>
+              <rect x="10" y="18" width="100" height="54" rx="8" fill="url(#g2)" opacity="0.12" />
+              <path d="M30 36h60v4H30z" fill="#fff" opacity="0.06" />
+              <path d="M30 50h40v6H30z" fill="#fff" opacity="0.06" />
+              <circle cx="92" cy="60" r="10" fill="url(#g2)" />
+            </svg>
+            <h3>Your Vault is Empty</h3>
+            <p class="muted">Store important PDFs, notes, and images here for quick access.</p>
+            <div class="empty-cta-row">
+              <button class="view-btn primary" id="ctaUploadFiles">Upload Files</button>
+              <button class="view-btn" id="vaultBrowseBtnSmall">Browse Device</button>
+            </div>
           </div>
         </div>
 
@@ -771,19 +854,6 @@
         <!-- Stats summary row -->
         <div class="analytics-stats-grid">
           <div class="analytics-stat-card glass">
-            <div class="stat-icon-wrapper blue">
-              <i class="ri-time-line"></i>
-            </div>
-            <div class="stat-info" style="width: 100%;">
-              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                <h3 id="analyticsTotalHours">0.0h</h3>
-                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +12%</span>
-              </div>
-              <p>Total Study Time</p>
-            </div>
-          </div>
-          
-          <div class="analytics-stat-card glass">
             <div class="stat-icon-wrapper green">
               <i class="ri-checkbox-circle-fill"></i>
             </div>
@@ -792,7 +862,20 @@
                 <h3 id="analyticsCompletedQuests">0</h3>
                 <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> +8%</span>
               </div>
-              <p>Completed Quests</p>
+              <p>Total Tasks Completed</p>
+            </div>
+          </div>
+
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-time-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsPendingTasks">0</h3>
+                <span class="trend-pill negative"><i class="ri-arrow-down-line"></i> -5%</span>
+              </div>
+              <p>Pending Tasks</p>
             </div>
           </div>
           
@@ -823,6 +906,94 @@
           </div>
         </div>
 
+        <div class="analytics-stats-grid">
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper blue">
+              <i class="ri-flashlight-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsDailyScore">0</h3>
+                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> Live</span>
+              </div>
+              <p>Today's Productivity Score</p>
+            </div>
+          </div>
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper green">
+              <i class="ri-award-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsDailyHighScore">0</h3>
+                <span class="trend-pill positive"><i class="ri-arrow-up-line"></i> Best</span>
+              </div>
+              <p>Daily High Score</p>
+            </div>
+          </div>
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper yellow">
+              <i class="ri-calendar-check-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsBestProductiveDay">—</h3>
+              </div>
+              <p>Best Productivity Day</p>
+            </div>
+          </div>
+          <div class="analytics-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-timer-flash-line"></i>
+            </div>
+            <div class="stat-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <h3 id="analyticsBestStudyRecord">0 min</h3>
+              </div>
+              <p>Best Study Record</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-weekly-summary-grid">
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper blue">
+              <i class="ri-calendar-check-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyCompletedTasks">0</h4>
+              <p>Completed this week</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper orange">
+              <i class="ri-time-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyPendingTasks">0</h4>
+              <p>Pending this week</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper green">
+              <i class="ri-repeat-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyAvgTasks">0</h4>
+              <p>Avg tasks / day</p>
+            </div>
+          </div>
+          <div class="weekly-stat-card glass">
+            <div class="stat-icon-wrapper purple">
+              <i class="ri-pie-chart-line"></i>
+            </div>
+            <div>
+              <h4 id="weeklyCompletionRate">0%</h4>
+              <p>Weekly completion</p>
+            </div>
+          </div>
+        </div>
+
 
         <!-- Charts grid -->
         <div class="analytics-charts-grid">
@@ -831,7 +1002,7 @@
             <div class="chart-header">
               <div class="header-left">
                 <i class="ri-bar-chart-fill"></i>
-                <h3>Study Hours</h3>
+                <h3>Productivity Chart</h3>
               </div>
               <div class="chart-toggle-group">
                 <button class="toggle-btn active" id="btnWeeklyStudy">Weekly</button>
@@ -1163,15 +1334,27 @@
 
         <div class="calendar-container glass">
           <div class="calendar-header">
-            <button class="icon-btn" id="prevMonth" aria-label="Previous Month"><i class="ri-arrow-left-s-line"></i></button>
-            <h3 id="currentMonthYear">Month Year</h3>
-            <button class="icon-btn" id="nextMonth" aria-label="Next Month"><i class="ri-arrow-right-s-line"></i></button>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="icon-btn" id="prevMonth" aria-label="Previous"><i class="ri-arrow-left-s-line"></i></button>
+              <h3 id="currentMonthYear">Month Year</h3>
+              <button class="icon-btn" id="nextMonth" aria-label="Next"><i class="ri-arrow-right-s-line"></i></button>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <button class="view-btn small active" id="calViewMonth">Monthly</button>
+              <button class="view-btn small" id="calViewWeek">Weekly</button>
+            </div>
           </div>
           <div class="calendar-weekdays">
             <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
           </div>
           <div class="calendar-grid" id="calendarGrid">
             <!-- Days populated by JS -->
+          </div>
+          <div class="calendar-legend" style="padding-top:10px;">
+            <div class="legend-item"><span class="legend-dot task"></span> Tasks</div>
+            <div class="legend-item"><span class="legend-dot exam"></span> Exams</div>
+            <div class="legend-item"><span class="legend-dot focus"></span> Focus Sessions</div>
+            <div class="legend-item"><span class="legend-dot daily"></span> Daily Goals</div>
           </div>
         </div>
 
@@ -1192,23 +1375,43 @@
             <div class="logo-icon"><i class="ri-gamepad-line"></i></div>
             <div class="logo-text">
               <h4>TaskQuest</h4>
-              <p>Conquer your goals one task at a time.</p>
+              <p>Conquer your goals — one task at a time.</p>
             </div>
           </div>
           <div class="footer-links">
-            <a href="#" aria-label="GitHub Repository"><i class="ri-github-fill"></i></a>
-            <a href="#" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
-            <a href="#" aria-label="Discord"><i class="ri-discord-fill"></i></a>
+            <a href="https://github.com/Sejal10406/student-task-manager" target="_blank" rel="noopener noreferrer" aria-label="GitHub Repository"><i class="ri-github-fill"></i></a>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
+            <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord"><i class="ri-discord-fill"></i></a>
           </div>
         </div>
         <div class="footer-bottom">
-          <p>&copy; 2026 TaskQuest. All rights reserved.</p>
+          <div class="footer-left">
+            <p id="footerCopyright">&copy; 2026 TaskQuest. All rights reserved.</p>
+            <p class="footer-credit">Made with <span class="heart">❤</span> for learners</p>
+          </div>
           <div class="footer-legal">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <a href="#" title="Privacy Policy">Privacy Policy</a>
+            <a href="#" title="Terms of Service">Terms of Service</a>
           </div>
         </div>
       </footer>
+
+      <!-- Footer enhancements: newsletter & back-to-top -->
+      <div class="footer-enhancements">
+        <div class="newsletter-panel">
+          <h4>Stay in the loop</h4>
+          <p>Subscribe for release notes and productivity tips.</p>
+          <div class="newsletter-input-row">
+            <input type="email" id="footerEmail" placeholder="Your email address" aria-label="Subscribe email" />
+            <button id="subscribeBtn" class="view-btn">Subscribe</button>
+          </div>
+          <div id="subscribeMsg" class="muted" aria-live="polite" style="margin-top:8px;"></div>
+        </div>
+
+        <button id="backToTopBtn" class="back-to-top" title="Back to top" aria-label="Back to top">
+          <i class="ri-arrow-up-s-line"></i>
+        </button>
+      </div>
 
     </section>
 
@@ -1406,7 +1609,19 @@
       </div>
 
       <div class="form-group">
-        <label for="profileInputPhoto">Profile Photo (Max 1MB)</label>
+        <label>Choose an avatar</label>
+        <div class="avatar-options" id="avatarOptions">
+          <img src="male_avatar.svg" alt="Male avatar" class="avatar-option" data-src="male_avatar.svg" />
+          <img src="female_avatar.svg" alt="Female avatar" class="avatar-option" data-src="female_avatar.svg" />
+          <img src="avatar_blue.svg" alt="Blue avatar" class="avatar-option" data-src="avatar_blue.svg" />
+          <img src="avatar_green.svg" alt="Green avatar" class="avatar-option" data-src="avatar_green.svg" />
+          <img src="avatar_orange.svg" alt="Orange avatar" class="avatar-option" data-src="avatar_orange.svg" />
+          <img src="avatar_purple.svg" alt="Purple avatar" class="avatar-option" data-src="avatar_purple.svg" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="profileInputPhoto">Or upload a photo (Max 1MB)</label>
         <input type="file" id="profileInputPhoto" accept="image/*" />
       </div>
       

@@ -3,6 +3,75 @@ const taskInput = document.getElementById("taskInput");
 const addTaskBtn = document.getElementById("addTaskBtn");
 const taskList = document.getElementById("taskList");
 const categorySelect = document.getElementById("categorySelect");
+const taskTemplate = document.getElementById("taskTemplate");
+
+// Quick templates: populate input/category/priority when a template is chosen
+if (taskTemplate) {
+  taskTemplate.addEventListener("change", () => {
+    const val = taskTemplate.value;
+    if (!val) return;
+    try {
+      const obj = JSON.parse(val);
+      taskInput.value = obj.text || "";
+      if (obj.category && categorySelect) categorySelect.value = obj.category;
+      const prioritySelect = document.getElementById("prioritySelect");
+      if (prioritySelect && obj.priority) prioritySelect.value = obj.priority;
+      taskInput.focus();
+      // Reset template selector for next use
+      taskTemplate.value = "";
+    } catch (e) {
+      console.error("Invalid template JSON", e);
+    }
+  });
+}
+
+// Footer enhancements: newsletter subscribe, dynamic year, back-to-top
+document.addEventListener('DOMContentLoaded', () => {
+  // Dynamic year
+  try {
+    const yearEl = document.getElementById('footerCopyright');
+    if (yearEl) {
+      const yr = new Date().getFullYear();
+      yearEl.innerHTML = `&copy; ${yr} TaskQuest. All rights reserved.`;
+    }
+  } catch(e){}
+
+  // Newsletter subscribe
+  const subscribeBtn = document.getElementById('subscribeBtn');
+  const emailInput = document.getElementById('footerEmail');
+  const subscribeMsg = document.getElementById('subscribeMsg');
+  if (subscribeBtn && emailInput) {
+    subscribeBtn.addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        subscribeMsg.textContent = 'Please enter a valid email address.';
+        subscribeMsg.style.color = '#f97316';
+        return;
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
+        if (!stored.includes(email)) stored.push(email);
+        localStorage.setItem('newsletter_subscribers', JSON.stringify(stored));
+        subscribeMsg.textContent = 'Thanks — you are subscribed!';
+        subscribeMsg.style.color = '#10b981';
+        emailInput.value = '';
+        setTimeout(() => subscribeMsg.textContent = '', 4000);
+      } catch (e) {
+        subscribeMsg.textContent = 'Subscription failed. Please try again.';
+        subscribeMsg.style.color = '#ef4444';
+      }
+    });
+  }
+
+  // Back to top behavior
+  const backBtn = document.getElementById('backToTopBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 220) backBtn.classList.add('show'); else backBtn.classList.remove('show');
+    });
+  }
+});
 
 // Sidebar metrics elements
 const totalTasks = document.getElementById("totalTasks");
@@ -20,6 +89,9 @@ const sortBtns = document.querySelectorAll(".filters .filter-btn[data-sort]");
 
 // Global states (Removed duplicates)
 let tasks = [];
+let exams = [];
+let vaultFiles = [];
+let projects = [];
 let currentFilter = "All";
 let currentSort = "default";
 let searchQuery = "";
@@ -33,6 +105,7 @@ let coins = 0;
 let streak = 0;
 let xp = 120;
 let currentStudyView = "weekly";
+let currentCalendarView = 'month';
 let profile = { name: "Student Hero", gender: "Male", class: "Class 10", title: "Focus Warrior ⚔️", photo: null };
 
 // Chart.js instances
@@ -44,6 +117,7 @@ let completionTrendChartInstance = null;
 let analyticsData = {
   dailyStudyMinutes: {},       // e.g. { "2026-05-18": 45.5 }
   completedTasksPerDay: {},    // e.g. { "2026-05-18": 3 }
+  dailyScoreHistory: {},       // e.g. { "2026-05-18": 240 }
   categoryStats: {
     Theory: { created: 0, completed: 0 },
     Practical: { created: 0, completed: 0 },
@@ -53,6 +127,13 @@ let analyticsData = {
   longestStreak: 0,
   currentStreak: 0,
   lastActiveDate: null,
+  productivityRecords: {
+    highestScore: 0,
+    bestProductiveDay: null,
+    highestTasksInDay: 0,
+    highestStudyMinutes: 0,
+    bestStudyDay: null
+  },
   unlockedAchievements: [],    // e.g. ["novice", "spark"]
   unlockedMilestones: []       // e.g. ["30mins", "60mins"]
 };
@@ -192,6 +273,36 @@ function loadData() {
     }
   }
 
+  // Load exams
+  const savedExams = localStorage.getItem("quests_exams");
+  if (savedExams) {
+    try {
+      exams = JSON.parse(savedExams);
+    } catch (e) {
+      exams = [];
+    }
+  }
+
+  // Load vault files
+  const savedVault = localStorage.getItem("quests_vault");
+  if (savedVault) {
+    try {
+      vaultFiles = JSON.parse(savedVault);
+    } catch (e) {
+      vaultFiles = [];
+    }
+  }
+
+  // Load projects
+  const savedProjects = localStorage.getItem("quests_projects");
+  if (savedProjects) {
+    try {
+      projects = JSON.parse(savedProjects);
+    } catch (e) {
+      projects = [];
+    }
+  }
+
   // Load gamification points
   coins = parseInt(localStorage.getItem("coins")) || 0;
   streak = parseInt(localStorage.getItem("streak")) || 0;
@@ -208,6 +319,16 @@ function loadData() {
       analyticsData = JSON.parse(savedAnalytics);
       if (!analyticsData.unlockedAchievements) analyticsData.unlockedAchievements = [];
       if (!analyticsData.unlockedMilestones) analyticsData.unlockedMilestones = [];
+      if (!analyticsData.dailyScoreHistory) analyticsData.dailyScoreHistory = {};
+      if (!analyticsData.productivityRecords) {
+        analyticsData.productivityRecords = {
+          highestScore: 0,
+          bestProductiveDay: null,
+          highestTasksInDay: 0,
+          highestStudyMinutes: 0,
+          bestStudyDay: null
+        };
+      }
     } catch (e) {
       initializeAnalyticsData();
     }
@@ -256,10 +377,23 @@ function loadData() {
       subjects = [];
     }
   }
+
+  // Load Calendar Events
+  const savedCalendar = localStorage.getItem('quests_calendar');
+  if (savedCalendar) {
+    try {
+      calendarEvents = JSON.parse(savedCalendar);
+    } catch (e) {
+      calendarEvents = [];
+    }
+  }
 }
 
 function saveData() {
   localStorage.setItem("quests", JSON.stringify(tasks));
+  localStorage.setItem("quests_exams", JSON.stringify(exams));
+  localStorage.setItem("quests_vault", JSON.stringify(vaultFiles));
+  localStorage.setItem("quests_projects", JSON.stringify(projects));
   localStorage.setItem("coins", coins);
   localStorage.setItem("streak", streak);
   localStorage.setItem("xp", xp);
@@ -270,6 +404,256 @@ function saveData() {
   localStorage.setItem("quests_subjects", JSON.stringify(subjects));
   localStorage.setItem("quests_calendar", JSON.stringify(calendarEvents));
 }
+
+// ==========================
+// Notifications Center
+// ==========================
+let notifications = [];
+
+function loadNotifications() {
+  try {
+    const raw = localStorage.getItem('quests_notifications');
+    notifications = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    notifications = [];
+  }
+}
+
+function saveNotifications() {
+  try {
+    localStorage.setItem('quests_notifications', JSON.stringify(notifications));
+  } catch (e) {
+    console.error('Failed saving notifications', e);
+  }
+}
+
+function addNotification({ id, type = 'info', title, body, time = Date.now(), ref } = {}) {
+  if (!id) id = `${type}-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+  // avoid duplicate for same ref/type
+  if (ref) {
+    const exists = notifications.find(n => n.ref === ref && n.type === type);
+    if (exists) return exists;
+  }
+
+  const n = { id, type, title, body, time, read: false, ref };
+  notifications.unshift(n);
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+  return n;
+}
+
+function markAsRead(id) {
+  const n = notifications.find(x => x.id === id);
+  if (n && !n.read) {
+    n.read = true;
+    saveNotifications();
+    renderNotificationPanel();
+    updateNotificationBadge();
+  }
+}
+
+function markAllRead() {
+  notifications.forEach(n => n.read = true);
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+}
+
+function clearAllNotifications() {
+  notifications = [];
+  saveNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+}
+
+function updateNotificationBadge() {
+  const badge = document.getElementById('notificationBadge');
+  const unread = notifications.filter(n => !n.read).length;
+  if (badge) {
+    if (unread > 0) { badge.style.display = 'inline-block'; badge.textContent = unread; }
+    else { badge.style.display = 'none'; }
+  }
+}
+
+function renderNotificationPanel() {
+  const list = document.getElementById('notificationsList');
+  const empty = document.getElementById('noNotifications');
+  if (!list || !empty) return;
+  list.innerHTML = '';
+  if (!notifications || notifications.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  notifications.slice(0, 100).forEach(n => {
+    const item = document.createElement('div');
+    item.className = `notif-item ${n.read ? '' : 'unread'}`;
+    item.setAttribute('data-id', n.id);
+
+    const icon = document.createElement('div');
+    icon.className = 'notif-icon';
+    icon.textContent = n.type === 'exam' ? '📚' : (n.type === 'deadline' ? '⏰' : (n.type === 'achievement' ? '🏆' : '🔔'));
+
+    const body = document.createElement('div');
+    body.className = 'notif-body';
+    const h = document.createElement('div');
+    h.innerHTML = `<strong>${escapeHtml(n.title)}</strong>`;
+    const p = document.createElement('div');
+    p.textContent = n.body;
+    p.className = 'notif-time';
+    const time = document.createElement('div');
+    time.className = 'notif-time';
+    time.textContent = new Date(n.time).toLocaleString();
+
+    body.appendChild(h);
+    body.appendChild(p);
+    body.appendChild(time);
+
+    const actions = document.createElement('div');
+    actions.className = 'notif-actions';
+    const btn = document.createElement('button');
+    btn.className = 'view-btn small';
+    btn.textContent = n.read ? 'Read' : 'Mark read';
+    btn.addEventListener('click', () => {
+      markAsRead(n.id);
+    });
+
+    actions.appendChild(btn);
+
+    item.appendChild(icon);
+    item.appendChild(body);
+    item.appendChild(actions);
+
+    list.appendChild(item);
+  });
+}
+
+// Toggle panel visibility
+function toggleNotificationPanel(show) {
+  const panel = document.getElementById('notificationPanel');
+  const bell = document.getElementById('notificationBell');
+  if (!panel || !bell) return;
+  const isOpen = panel.style.display === 'block';
+  if (typeof show === 'boolean') {
+    panel.style.display = show ? 'block' : 'none';
+    bell.setAttribute('aria-expanded', show ? 'true' : 'false');
+  } else {
+    panel.style.display = isOpen ? 'none' : 'block';
+    bell.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+  }
+}
+
+
+// ==========================
+// Drag & Drop: Persist order
+// ==========================
+function enableDragAndDrop() {
+  // Task list (div), daily goals (ul), assignments (div)
+  const dailyGoalsList = document.getElementById("dailyGoalsList");
+  const asgnList = document.getElementById("asgnList");
+
+  // Generic initializer for a container whose children are sortable
+  function makeSortable(container, type) {
+    if (!container) return;
+    container.classList.add("sortable-list");
+
+    let dragEl = null;
+
+    container.addEventListener("dragstart", (e) => {
+      dragEl = e.target;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', 'drag'); } catch (err) {}
+      e.target.classList.add('dragging');
+      requestAnimationFrame(() => e.target.style.opacity = '0.6');
+    });
+
+    container.addEventListener("dragend", (e) => {
+      if (e.target) e.target.classList.remove('dragging');
+      if (e.target) e.target.style.opacity = '';
+      dragEl = null;
+      persistOrder(type);
+    });
+
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(container, e.clientY);
+      const dragging = container.querySelector('.dragging');
+      if (!dragging) return;
+      if (afterElement == null) {
+        container.appendChild(dragging);
+      } else {
+        container.insertBefore(dragging, afterElement);
+      }
+    });
+
+    // Touch support for mobile (fallback)
+    let touchDragEl = null;
+    container.addEventListener('touchstart', (e) => {
+      const target = e.target.closest('[data-id]');
+      if (!target) return;
+      touchDragEl = target;
+      target.classList.add('dragging');
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (!touchDragEl) return;
+      const touch = e.touches[0];
+      const after = getDragAfterElement(container, touch.clientY);
+      if (after == null) container.appendChild(touchDragEl);
+      else container.insertBefore(touchDragEl, after);
+      e.preventDefault();
+    }, { passive: false });
+
+    container.addEventListener('touchend', (e) => {
+      if (touchDragEl) touchDragEl.classList.remove('dragging');
+      touchDragEl = null;
+      persistOrder(type);
+    });
+  }
+
+  makeSortable(taskList, 'tasks');
+  makeSortable(dailyGoalsList, 'dailyGoals');
+  makeSortable(asgnList, 'assignments');
+}
+
+// removed duplicate getDragAfterElement (using generic version below)
+
+function persistOrder(type) {
+  try {
+    if (type === 'tasks') {
+      // Collect ids from taskList children in order
+      const ids = Array.from(taskList.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      // Reorder tasks array to match ids
+      tasks = ids.map(id => tasks.find(t => String(t.id) === String(id))).filter(Boolean);
+      saveData();
+      renderTasks();
+    } else if (type === 'dailyGoals') {
+      const daily = document.getElementById('dailyGoalsList');
+      const goals = Array.from(daily.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      const stored = JSON.parse(localStorage.getItem('daily_goals') || '[]');
+      const newOrder = goals.map(id => stored.find(g => String(g.id) === String(id))).filter(Boolean);
+      localStorage.setItem('daily_goals', JSON.stringify(newOrder));
+      renderDailyGoals();
+    } else if (type === 'assignments') {
+      const asgn = document.getElementById('asgnList');
+      const order = Array.from(asgn.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      const stored = JSON.parse(localStorage.getItem('quests_exams') || '[]');
+      const newOrder = order.map(id => stored.find(a => String(a.id) === String(id))).filter(Boolean);
+      localStorage.setItem('quests_exams', JSON.stringify(newOrder));
+      loadData();
+      renderAssignments();
+    }
+  } catch (e) {
+    console.error('Persist order failed', e);
+  }
+}
+
+// Initialize drag & drop after DOM ready and initial render
+document.addEventListener('DOMContentLoaded', () => {
+  enableDragAndDrop();
+});
 
 // Generate beautiful visual mock data for past 15 days if empty
 function initializeAnalyticsData() {
@@ -450,6 +834,8 @@ function checkAchievements() {
       if (ach.check()) {
         analyticsData.unlockedAchievements.push(ach.id);
         triggerAchievementToast(ach.title);
+        // Add notification for achievement
+        addNotification({ type: 'achievement', title: `Achievement unlocked: ${ach.title}`, body: ach.desc, ref: `ach-${ach.id}` });
         newlyUnlocked = true;
       }
     }
@@ -622,6 +1008,9 @@ function addTask() {
   saveData();
   renderTasks();
 
+  // Refresh calendar to reflect any deadlines
+  renderCalendar();
+
   updateDeadlineAlerts();
 
 
@@ -696,6 +1085,7 @@ function createTaskEl(task) {
       analyticsData.completedTasksPerDay[todayStr] = (analyticsData.completedTasksPerDay[todayStr] || 0) + 1;
       analyticsData.categoryStats[task.category].completed = (analyticsData.categoryStats[task.category].completed || 0) + 1;
       updateAnalyticsStreak(todayStr);
+      updateProductivityRecords(todayStr);
 
       // Visual Feedback and Rewards
       triggerConfetti();
@@ -712,6 +1102,7 @@ function createTaskEl(task) {
         analyticsData.completedTasksPerDay[todayStr] = Math.max(0, analyticsData.completedTasksPerDay[todayStr] - 1);
       }
       analyticsData.categoryStats[task.category].completed = Math.max(0, analyticsData.categoryStats[task.category].completed - 1);
+      updateProductivityRecords(todayStr);
     }
 
     saveData();
@@ -886,7 +1277,7 @@ function saveTaskOrder() {
 }
 
 function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll(".task:not(.dragging)")];
+  const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
 
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
@@ -1073,10 +1464,23 @@ function renderPerformance() {
 
   if (performanceData.length === 0) {
     container.innerHTML = `
-      <div class="empty-state">
-        <i class="ri-medal-line"></i>
-        <h3>No Records Found</h3>
-        <p>Add your subjects and marks to visualize your academic progress.</p>
+      <div class="empty-state enhanced-empty" id="performanceEmpty">
+        <svg width="140" height="90" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g4" x1="0" x2="1">
+              <stop offset="0" stop-color="#6366f1" />
+              <stop offset="1" stop-color="#06b6d4" />
+            </linearGradient>
+          </defs>
+          <rect x="10" y="18" width="120" height="54" rx="8" fill="url(#g4)" opacity="0.12" />
+          <path d="M26 34h88v6H26z" fill="#fff" opacity="0.06" />
+          <circle cx="110" cy="56" r="10" fill="url(#g4)" />
+        </svg>
+        <h3>No Academic Records</h3>
+        <p class="muted">Add subjects and their scores to visualize your academic performance.</p>
+        <div class="empty-cta-row">
+          <button class="view-btn primary" id="ctaAddSubject">Add Subject</button>
+        </div>
       </div>
     `;
     if (statsContainer) statsContainer.innerHTML = "";
@@ -1133,6 +1537,54 @@ function renderPerformance() {
     `;
   }
 }
+
+function renderSubjectTracker() {
+  const grid = document.getElementById("subjectsGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  if (!subjects || subjects.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1; text-align:center; padding:40px;">
+        <i class="ri-book-open-line" style="font-size: 2.5rem; opacity: 0.3;"></i>
+        <h3>No subjects added yet</h3>
+        <p>Create a subject to track homework, revision, and mastery progress.</p>
+      </div>
+    `;
+    return;
+  }
+
+  subjects.forEach(subject => {
+    const percentage = subject.total > 0 ? Math.round((subject.completed / subject.total) * 100) : 0;
+    const card = document.createElement("div");
+    card.className = "subject-card glass";
+    card.innerHTML = `
+      <div class="subject-card-header">
+        <div>
+          <h4>${escapeHtml(subject.title)}</h4>
+          <p>${subject.completed} / ${subject.total} topics completed</p>
+        </div>
+        <button class="icon-btn delete-btn" onclick="deleteSubject(${subject.id})" aria-label="Delete subject"><i class="ri-delete-bin-line"></i></button>
+      </div>
+      <div class="subject-progress-wrap">
+        <div class="subject-progress-bar">
+          <div class="subject-progress-fill" style="width: ${percentage}%"></div>
+        </div>
+        <span class="subject-progress-label">${percentage}% mastery</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+window.deleteSubject = (id) => {
+  if (confirm("Delete this subject record?")) {
+    subjects = subjects.filter(s => s.id !== id);
+    saveData();
+    renderSubjectTracker();
+    announce("Subject record removed.");
+  }
+};
 
 window.deletePerformance = (id) => {
   if (confirm("Delete this academic record?")) {
@@ -1275,6 +1727,11 @@ function renderCalendar() {
   if (!grid) return;
 
   grid.innerHTML = "";
+  // if week view active, render week
+  if (currentCalendarView === 'week') {
+    renderCalendarWeek(grid, currentCalendarDate);
+    return;
+  }
   const year = currentCalendarDate.getFullYear();
   const month = currentCalendarDate.getMonth();
   
@@ -1302,15 +1759,53 @@ function renderCalendar() {
     }
 
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayEvents = calendarEvents.filter(e => e.date === dateStr);
+    const dayEvents = [];
+    // calendar custom events
+    calendarEvents.filter(e => e.date === dateStr).forEach(e => dayEvents.push(Object.assign({}, e, { type: 'custom' })));
+    // tasks with deadline on this date
+    tasks.filter(t => t.deadline).forEach(t => {
+      const dt = getDatePart(t.deadline);
+      if (dt === dateStr) dayEvents.push({ id: t.id, title: t.text, type: 'task', deadline: t.deadline, category: t.category });
+    });
+    // exams
+    exams.forEach(ex => {
+      const exDate = new Date(ex.date);
+      const exDateStr = `${exDate.getFullYear()}-${String(exDate.getMonth()+1).padStart(2,'0')}-${String(exDate.getDate()).padStart(2,'0')}`;
+      if (exDateStr === dateStr) dayEvents.push({ id: ex.id, title: ex.title, type: 'exam', subject: ex.subject });
+    });
+    // focus sessions
+    (analyticsData.focusHistory || []).forEach(f => {
+      const fDate = new Date(f.timestamp);
+      const fDateStr = `${fDate.getFullYear()}-${String(fDate.getMonth()+1).padStart(2,'0')}-${String(fDate.getDate()).padStart(2,'0')}`;
+      if (fDateStr === dateStr) dayEvents.push({ id: f.timestamp, title: `Focus ${f.duration || f.minutes || ''}m`, type: 'focus' });
+    });
+    // daily goals (show on today only)
+    try {
+      const dg = JSON.parse(localStorage.getItem('daily_goals') || '[]');
+      if (dg && dg.length > 0) {
+        const todayStr = getFormattedDate(new Date());
+        if (todayStr === dateStr) dg.forEach(g => dayEvents.push({ id: g.id || g.text, title: g.text || 'Daily Goal', type: 'daily' }));
+      }
+    } catch(e) {}
 
     dayDiv.innerHTML = `<span class="day-number">${d}</span>`;
-    dayEvents.forEach(e => {
+    dayEvents.slice(0,3).forEach(e => {
       const eDiv = document.createElement("div");
-      eDiv.className = "event-pill-mini";
+      eDiv.className = `event-pill-mini ${e.type === 'task' ? 'event-task' : e.type === 'exam' ? 'event-exam' : e.type === 'focus' ? 'event-focus' : e.type === 'daily' ? 'event-daily' : 'event-custom'}`;
       eDiv.textContent = e.title;
+      eDiv.title = e.title;
       dayDiv.appendChild(eDiv);
     });
+
+    // highlight upcoming deadlines (within 48 hours)
+    const twoDaysAhead = new Date(); twoDaysAhead.setDate(twoDaysAhead.getDate()+2);
+    const todayISO = getFormattedDate(new Date());
+    const checkUpcoming = tasks.some(t => {
+      if (!t.deadline) return false;
+      const dpart = getDatePart(t.deadline);
+      return dpart === dateStr && new Date(t.deadline) <= twoDaysAhead && new Date(t.deadline) >= new Date();
+    });
+    if (checkUpcoming) dayDiv.classList.add('upcoming');
 
     dayDiv.onclick = () => {
       document.getElementById("eventDateInput").value = dateStr;
@@ -1356,6 +1851,53 @@ function initCalendarNotifier() {
   }, 30000);
 }
 
+function getDatePart(val) {
+  if (!val) return null;
+  // handle datetime-local value like 2026-05-23T14:00
+  if (typeof val === 'string' && val.indexOf('T') !== -1) return val.split('T')[0];
+  try {
+    const d = new Date(val);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  } catch (e) { return null; }
+}
+
+function renderCalendarWeek(grid, dateRef) {
+  grid.innerHTML = '';
+  const start = new Date(dateRef);
+  // set to start of week (Sunday)
+  start.setDate(start.getDate() - start.getDay());
+
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
+
+    const col = document.createElement('div');
+    col.className = 'calendar-day';
+    col.innerHTML = `<span class="day-number">${day.getDate()}</span><div style="margin-top:22px; font-weight:600;">${day.toLocaleDateString(undefined,{weekday:'long'})}</div>`;
+
+    const dayEvents = [];
+    calendarEvents.filter(e => e.date === dateStr).forEach(e => dayEvents.push(Object.assign({}, e, { type: 'custom' })));
+    tasks.filter(t => t.deadline && getDatePart(t.deadline) === dateStr).forEach(t => dayEvents.push({ id: t.id, title: t.text, type: 'task', deadline: t.deadline, category: t.category }));
+    exams.forEach(ex => { const exDate = new Date(ex.date); const exDateStr = `${exDate.getFullYear()}-${String(exDate.getMonth()+1).padStart(2,'0')}-${String(exDate.getDate()).padStart(2,'0')}`; if (exDateStr === dateStr) dayEvents.push({ id: ex.id, title: ex.title, type: 'exam' }); });
+    (analyticsData.focusHistory || []).forEach(f => { const fDate = new Date(f.timestamp); const fDateStr = `${fDate.getFullYear()}-${String(fDate.getMonth()+1).padStart(2,'0')}-${String(fDate.getDate()).padStart(2,'0')}`; if (fDateStr === dateStr) dayEvents.push({ id: f.timestamp, title: `Focus ${f.duration || f.minutes || ''}m`, type: 'focus' }); });
+
+    dayEvents.forEach(e => {
+      const eDiv = document.createElement('div');
+      eDiv.className = `event-pill-mini ${e.type === 'task' ? 'event-task' : e.type === 'exam' ? 'event-exam' : e.type === 'focus' ? 'event-focus' : e.type === 'daily' ? 'event-daily' : 'event-custom'}`;
+      eDiv.textContent = e.title;
+      col.appendChild(eDiv);
+    });
+
+    col.onclick = () => {
+      document.getElementById('eventDateInput').value = dateStr;
+      document.getElementById('eventTitleInput').focus();
+    };
+
+    grid.appendChild(col);
+  }
+}
+
 function updateAnalyticsStreak(todayStr) {
   if (analyticsData.lastActiveDate === todayStr) return;
 
@@ -1374,6 +1916,71 @@ function updateAnalyticsStreak(todayStr) {
   }
 
   analyticsData.lastActiveDate = todayStr;
+}
+
+function computeDailyProductivityScore(dateStr) {
+  const completedTasks = analyticsData.completedTasksPerDay[dateStr] || 0;
+  const studyMinutes = analyticsData.dailyStudyMinutes[dateStr] || 0;
+  const streakBonus = analyticsData.lastActiveDate === dateStr ? (analyticsData.currentStreak || 0) * 5 : 0;
+  const score = Math.round((completedTasks * 35) + (studyMinutes * 1.4) + streakBonus);
+
+  analyticsData.dailyScoreHistory = analyticsData.dailyScoreHistory || {};
+  analyticsData.dailyScoreHistory[dateStr] = score;
+  return score;
+}
+
+function updateProductivityRecords(dateStr) {
+  analyticsData.dailyScoreHistory = analyticsData.dailyScoreHistory || {};
+  const score = computeDailyProductivityScore(dateStr);
+  const studyMinutes = analyticsData.dailyStudyMinutes[dateStr] || 0;
+  const completedTasks = analyticsData.completedTasksPerDay[dateStr] || 0;
+
+  if (!analyticsData.productivityRecords) {
+    analyticsData.productivityRecords = {
+      highestScore: 0,
+      bestProductiveDay: null,
+      highestTasksInDay: 0,
+      highestStudyMinutes: 0,
+      bestStudyDay: null
+    };
+  }
+
+  if (score > analyticsData.productivityRecords.highestScore) {
+    analyticsData.productivityRecords.highestScore = score;
+    analyticsData.productivityRecords.bestProductiveDay = dateStr;
+  }
+
+  if (completedTasks > analyticsData.productivityRecords.highestTasksInDay) {
+    analyticsData.productivityRecords.highestTasksInDay = completedTasks;
+    analyticsData.productivityRecords.bestProductiveDay = dateStr;
+  }
+
+  if (studyMinutes > analyticsData.productivityRecords.highestStudyMinutes) {
+    analyticsData.productivityRecords.highestStudyMinutes = studyMinutes;
+    analyticsData.productivityRecords.bestStudyDay = dateStr;
+  }
+
+  saveData();
+}
+
+function getTodayProductivityScore() {
+  const todayStr = getFormattedDate(new Date());
+  if (analyticsData.dailyScoreHistory && analyticsData.dailyScoreHistory[todayStr] != null) {
+    return analyticsData.dailyScoreHistory[todayStr];
+  }
+  return computeDailyProductivityScore(todayStr);
+}
+
+function getDailyHighScore() {
+  let highScore = 0;
+  let bestDay = null;
+  Object.entries(analyticsData.dailyScoreHistory || {}).forEach(([day, score]) => {
+    if (typeof score === 'number' && score > highScore) {
+      highScore = score;
+      bestDay = day;
+    }
+  });
+  return { score: highScore, day: bestDay };
 }
 
 // Helpers
@@ -1435,6 +2042,7 @@ function startTimer() {
       const fractionalMinutes = elapsedSeconds / 60;
       analyticsData.dailyStudyMinutes[todayStr] = (analyticsData.dailyStudyMinutes[todayStr] || 0) + fractionalMinutes;
       saveData();
+      updateProductivityRecords(todayStr);
     }
 
     updateDisplay();
@@ -1445,6 +2053,7 @@ function startTimer() {
 
       if (isStudy) {
         sendNotification("Session Complete!", "Study session complete! Take a well-deserved break ☕");
+        addNotification({ type: 'break', title: 'Study session complete', body: 'Time for a break ☕' });
         alert("Study session complete! Take a break.");
 
         // Log session in focus history
@@ -1458,6 +2067,9 @@ function startTimer() {
         if (analyticsData.focusHistory.length > 10) {
           analyticsData.focusHistory.shift();
         }
+
+        saveData();
+        renderCalendar();
 
         isStudy = false;
         currentTime = breakTime;
@@ -1478,6 +2090,7 @@ function startTimer() {
         checkAchievements();
       } else {
         sendNotification("Break Over!", "Break over! Time to focus back on your tasks ⚔️");
+        addNotification({ type: 'break', title: 'Break over', body: 'Break finished — back to study!' });
         alert("Break over! Back to study.");
 
         isStudy = true;
@@ -1799,9 +2412,13 @@ function updateAnalyticsDashboard() {
   const totalHoursEl = document.getElementById("analyticsTotalHours");
   if (totalHoursEl) totalHoursEl.textContent = `${totalStudyHours}h`;
 
-  const totalCompletedQuests = Object.values(analyticsData.completedTasksPerDay).reduce((a, b) => a + b, 0);
+  const totalCompletedQuests = tasks.filter(task => task.completed).length;
   const completedQuestsEl = document.getElementById("analyticsCompletedQuests");
   if (completedQuestsEl) completedQuestsEl.textContent = totalCompletedQuests;
+
+  const pendingTaskCount = tasks.filter(task => !task.completed).length;
+  const pendingTasksEl = document.getElementById("analyticsPendingTasks");
+  if (pendingTasksEl) pendingTasksEl.textContent = pendingTaskCount;
 
   const streakEl = document.getElementById("analyticsStreak");
   if (streakEl) streakEl.textContent = `${analyticsData.currentStreak} days`;
@@ -1811,6 +2428,47 @@ function updateAnalyticsDashboard() {
   const completionRate = totalCreated > 0 ? Math.round((totalCompleted / totalCreated) * 100) : 0;
   const rateEl = document.getElementById("analyticsCompletionRate");
   if (rateEl) rateEl.textContent = `${completionRate}%`;
+
+  const todayScoreEl = document.getElementById("analyticsDailyScore");
+  const dailyHighScoreEl = document.getElementById("analyticsDailyHighScore");
+  const bestDayEl = document.getElementById("analyticsBestProductiveDay");
+  const bestStudyRecordEl = document.getElementById("analyticsBestStudyRecord");
+
+  if (todayScoreEl) todayScoreEl.textContent = `${getTodayProductivityScore()}`;
+
+  const highScoreData = getDailyHighScore();
+  if (dailyHighScoreEl) dailyHighScoreEl.textContent = `${highScoreData.score}`;
+  if (bestDayEl) bestDayEl.textContent = highScoreData.day ? new Date(highScoreData.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—';
+  if (bestStudyRecordEl) {
+    const minutes = Math.round(analyticsData.productivityRecords?.highestStudyMinutes || 0);
+    bestStudyRecordEl.textContent = minutes > 0 ? `${minutes} min` : '—';
+  }
+
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weeklyTasks = tasks.filter(task => {
+    if (!task.createdAt) return false;
+    const createdDate = new Date(task.createdAt);
+    return createdDate >= weekStart && createdDate <= today;
+  });
+
+  const weeklyCompleted = weeklyTasks.filter(task => task.completed).length;
+  const weeklyPending = weeklyTasks.filter(task => !task.completed).length;
+  const weeklyAvg = weeklyTasks.length ? Math.max(0, Math.round((weeklyTasks.length / 7) * 10) / 10) : 0;
+  const weeklyCompletionRate = weeklyTasks.length ? Math.round((weeklyCompleted / weeklyTasks.length) * 100) : 0;
+
+  const weeklyCompletedTasksEl = document.getElementById("weeklyCompletedTasks");
+  if (weeklyCompletedTasksEl) weeklyCompletedTasksEl.textContent = weeklyCompleted;
+  const weeklyPendingTasksEl = document.getElementById("weeklyPendingTasks");
+  if (weeklyPendingTasksEl) weeklyPendingTasksEl.textContent = weeklyPending;
+  const weeklyAvgTasksEl = document.getElementById("weeklyAvgTasks");
+  if (weeklyAvgTasksEl) weeklyAvgTasksEl.textContent = weeklyAvg;
+  const weeklyCompletionRateEl = document.getElementById("weeklyCompletionRate");
+  if (weeklyCompletionRateEl) weeklyCompletionRateEl.textContent = `${weeklyCompletionRate}%`;
 
   // 2. Initialize or Update Chart.js instances
   initStudyHoursChart();
@@ -2048,6 +2706,125 @@ function initCompletionTrendChart() {
   });
 }
 
+// ----- Analytics Export helpers -----
+function gatherAnalyticsData() {
+  const analytics = window.quests_analytics || {};
+  // Provide safe defaults
+  return {
+    studyMinutes: analytics.dailyStudyMinutes || [],
+    completedPerDay: analytics.completedTasksPerDay || [],
+    focusHistory: analytics.focusHistory || [],
+    currentStreak: analytics.currentStreak || 0,
+    longestStreak: analytics.longestStreak || 0,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportAnalyticsCSV() {
+  const data = gatherAnalyticsData();
+  let csv = 'section,metric,day,value\n';
+  // Study minutes
+  data.studyMinutes.forEach((m, i) => { csv += `study,minutes,${i+1},${m}\n`; });
+  // Completed tasks
+  data.completedPerDay.forEach((c, i) => { csv += `completed,tasks,${i+1},${c}\n`; });
+  // Focus history
+  data.focusHistory.forEach((f, i) => { csv += `focus,session,${i+1},${f.duration || f.minutes || 0}\n`; });
+  csv += `streak,current, ,${data.currentStreak}\n`;
+  csv += `streak,longest, ,${data.longestStreak}\n`;
+  csv += `generated,at, ,${data.generatedAt}\n`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  downloadBlob('quests_analytics_export.csv', blob);
+}
+
+function exportChartsPNG() {
+  const canvasIds = ['studyHoursChart', 'categoryChart', 'completionTrendChart'];
+  canvasIds.forEach((id) => {
+    const c = document.getElementById(id);
+    if (c && c.toDataURL) {
+      const dataUrl = c.toDataURL('image/png');
+      // trigger download
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  });
+}
+
+async function exportAnalyticsPDF() {
+  // Ensure jsPDF available
+  let jsPDFGlobal = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+  if (!jsPDFGlobal) {
+    // try to load UMD export
+    if (window.jspdf && window.jspdf.jsPDF) jsPDFGlobal = window.jspdf.jsPDF;
+  }
+  if (!jsPDFGlobal) {
+    console.warn('jsPDF not found; attempting dynamic load');
+    await new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      document.head.appendChild(s);
+    });
+    jsPDFGlobal = window.jspdf && (window.jspdf.jsPDF || window.jspdf);
+  }
+  if (!jsPDFGlobal) {
+    alert('PDF export unavailable (jsPDF failed to load)');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const margin = 40;
+  let y = margin;
+  doc.setFontSize(16);
+  doc.text('Quests Analytics Export', margin, y);
+  y += 22;
+  doc.setFontSize(10);
+  const data = gatherAnalyticsData();
+  doc.text(`Generated: ${data.generatedAt}`, margin, y);
+  y += 18;
+  doc.text(`Current streak: ${data.currentStreak} days`, margin, y);
+  y += 18;
+  doc.text(`Longest streak: ${data.longestStreak} days`, margin, y);
+  y += 24;
+
+  // add charts as images if present
+  const canvasIds = ['studyHoursChart', 'categoryChart', 'completionTrendChart'];
+  for (const id of canvasIds) {
+    const c = document.getElementById(id);
+    if (c && c.toDataURL) {
+      const img = c.toDataURL('image/png');
+      const imgProps = doc.getImageProperties(img);
+      const pdfWidth = doc.internal.pageSize.getWidth() - margin * 2;
+      const scale = Math.min(1, pdfWidth / imgProps.width);
+      const imgHeight = imgProps.height * scale;
+      if (y + imgHeight > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.addImage(img, 'PNG', margin, y, pdfWidth, imgHeight);
+      y += imgHeight + 12;
+    }
+  }
+
+  doc.save('quests_analytics_export.pdf');
+}
+
 // Chart toggle click listeners for completion trend
 document.getElementById("btnWeeklyTrend")?.addEventListener("click", () => {
   const weekly = document.getElementById("btnWeeklyTrend");
@@ -2078,7 +2855,34 @@ function renderFocusHistory() {
 
   const history = analyticsData.focusHistory || [];
   if (history.length === 0) {
-    container.innerHTML = `<div class="empty-history" style="text-align: center; color: var(--textLight); padding: 20px;">No sessions logged yet.</div>`;
+    container.innerHTML = `
+      <div class="empty-state enhanced-empty" id="focusEmpty">
+        <svg width="140" height="90" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g3" x1="0" x2="1">
+              <stop offset="0" stop-color="#f59e0b" />
+              <stop offset="1" stop-color="#f43f5e" />
+            </linearGradient>
+          </defs>
+          <rect x="8" y="18" width="124" height="54" rx="8" fill="url(#g3)" opacity="0.12" />
+          <path d="M28 40h84v6H28z" fill="#fff" opacity="0.06" />
+          <circle cx="110" cy="56" r="10" fill="url(#g3)" />
+        </svg>
+        <h3>No Focus Sessions Yet</h3>
+        <p class="muted">Track study sessions with the Pomodoro timer to build momentum.</p>
+        <div class="empty-cta-row">
+          <button class="view-btn primary" id="ctaStartSession">Start Focus Session</button>
+          <button class="view-btn" id="ctaCreateTaskFromHistory">Create Task</button>
+        </div>
+      </div>
+    `;
+    // Attach CTA handlers after inserting
+    setTimeout(() => {
+      const startBtn = document.getElementById('ctaStartSession');
+      const createBtn = document.getElementById('ctaCreateTaskFromHistory');
+      if (startBtn) startBtn.addEventListener('click', () => { startTimer(); });
+      if (createBtn) createBtn.addEventListener('click', () => { document.getElementById('taskInput').focus(); });
+    }, 0);
     return;
   }
 
@@ -2314,6 +3118,7 @@ function updateDeadlineAlerts() {
     // Send browser notification for tasks reaching critical urgency
     if (urgencyData.urgency === "critical") {
       sendNotification("Urgent Deadline!", `COMPLETE ${task.text} TASK ASAP`);
+      addNotification({ type: 'deadline', title: `Deadline: ${task.text}`, body: `${urgencyData.formatted} left`, ref: `task-deadline-${task.id}` });
     }
 
 
@@ -2651,10 +3456,91 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWeeklyStreak();
   updateDisplay();
   renderPerformance();
+  renderFocusHistory();
   renderTimetable();
   renderCalendar();
   renderProfile();
   renderSubjectTracker();
+
+  // Notifications init
+  loadNotifications();
+  renderNotificationPanel();
+  updateNotificationBadge();
+
+  const bell = document.getElementById('notificationBell');
+  const panel = document.getElementById('notificationPanel');
+  const markAllBtn = document.getElementById('markAllReadBtn');
+  const clearAllBtn = document.getElementById('clearAllNotifBtn');
+
+  if (bell) {
+    bell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNotificationPanel();
+    });
+  }
+
+  // Close panel if clicking outside
+  document.addEventListener('click', (e) => {
+    if (!panel) return;
+    const target = e.target;
+    if (!panel.contains(target) && !bell.contains(target)) {
+      panel.style.display = 'none';
+      if (bell) bell.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  if (markAllBtn) markAllBtn.addEventListener('click', () => markAllRead());
+  if (clearAllBtn) clearAllBtn.addEventListener('click', () => clearAllNotifications());
+
+  // CTA wiring for empty states
+  const ctaCreateTask = document.getElementById('ctaCreateTask');
+  if (ctaCreateTask) ctaCreateTask.addEventListener('click', () => { document.getElementById('taskInput').focus(); });
+
+  const ctaBrowseTemplates = document.getElementById('ctaBrowseTemplates');
+  if (ctaBrowseTemplates) ctaBrowseTemplates.addEventListener('click', () => { document.getElementById('taskTemplate').focus(); });
+
+  const ctaUploadFiles = document.getElementById('ctaUploadFiles');
+  if (ctaUploadFiles) ctaUploadFiles.addEventListener('click', () => { document.getElementById('vaultFileInput').click(); });
+
+  const vaultBrowseBtnSmall = document.getElementById('vaultBrowseBtnSmall');
+  if (vaultBrowseBtnSmall) vaultBrowseBtnSmall.addEventListener('click', () => { document.getElementById('vaultFileInput').click(); });
+
+  const ctaAddSubject = document.getElementById('ctaAddSubject');
+  if (ctaAddSubject) ctaAddSubject.addEventListener('click', () => { const s = document.getElementById('subjectInputForm'); if (s) { s.style.display='grid'; s.querySelector('input')?.focus(); } });
+
+  // Export menu handlers
+  const exportBtn = document.getElementById('exportBtn');
+  const exportMenu = document.getElementById('exportMenu');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const exportPngBtn = document.getElementById('exportPngBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+  if (exportBtn && exportMenu) {
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportMenu.style.display = exportMenu.style.display === 'block' ? 'none' : 'block';
+    });
+  }
+
+  document.addEventListener('click', () => { if (exportMenu) exportMenu.style.display = 'none'; });
+
+  if (exportCsvBtn) exportCsvBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsCSV(); exportMenu.style.display='none'; });
+  if (exportPngBtn) exportPngBtn.addEventListener('click', (e) => { e.stopPropagation(); exportChartsPNG(); exportMenu.style.display='none'; });
+  if (exportPdfBtn) exportPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsPDF(); exportMenu.style.display='none'; });
+
+  // Footer: set dynamic year and small accessibility tweaks
+  const footerCopyright = document.getElementById('footerCopyright');
+  if (footerCopyright) {
+    const year = new Date().getFullYear();
+    footerCopyright.innerHTML = `&copy; ${year} TaskQuest. All rights reserved.`;
+  }
+
+  // Ensure social links have titles for hover/tooltip
+  document.querySelectorAll('.footer-links a').forEach(a => {
+    if (!a.getAttribute('title')) {
+      a.setAttribute('title', a.getAttribute('aria-label') || 'External link');
+    }
+  });
 
   checkOverduePenalties();
   initTimetableNotifier();
@@ -2779,6 +3665,9 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCalendar();
   });
 
+  document.getElementById('calViewMonth')?.addEventListener('click', (e) => { currentCalendarView = 'month'; document.getElementById('calViewMonth')?.classList.add('active'); document.getElementById('calViewWeek')?.classList.remove('active'); renderCalendar(); });
+  document.getElementById('calViewWeek')?.addEventListener('click', (e) => { currentCalendarView = 'week'; document.getElementById('calViewWeek')?.classList.add('active'); document.getElementById('calViewMonth')?.classList.remove('active'); renderCalendar(); });
+
   document.getElementById("addEventBtn")?.addEventListener("click", () => {
     const title = document.getElementById("eventTitleInput").value.trim();
     const date = document.getElementById("eventDateInput").value;
@@ -2893,6 +3782,37 @@ document.getElementById("profileCard")?.addEventListener("click", () => {
     photoInput.value = "";
   }
 
+  // Initialize avatar options and select current
+  const avatarOptions = document.getElementById('avatarOptions');
+  if (avatarOptions) {
+    // Mark selected if profile.photo matches one of the options
+    const imgs = avatarOptions.querySelectorAll('.avatar-option');
+    imgs.forEach(img => {
+      img.classList.remove('selected');
+      if (profile.photo && profile.photo.endsWith && profile.photo === img.dataset.src) {
+        img.classList.add('selected');
+      }
+
+      img.onclick = () => {
+        // Clear any uploaded file input
+        if (photoInput) photoInput.value = '';
+        // Set profile.photo to the selected avatar path
+        profile.photo = img.dataset.src;
+        // Update selection UI
+        imgs.forEach(i => i.classList.remove('selected'));
+        img.classList.add('selected');
+        // Update preview in the sidebar immediately
+        const avatarImg = document.getElementById('profileAvatarImg');
+        const avatarPlaceholder = document.getElementById('profileIconPlaceholder');
+        if (avatarImg) {
+          avatarImg.src = profile.photo;
+          avatarImg.style.display = 'block';
+        }
+        if (avatarPlaceholder) avatarPlaceholder.style.display = 'none';
+      };
+    });
+  }
+
   overlay.classList.add("active");
   modal.classList.add("active");
   enableFocusTrap(modal);
@@ -3000,4 +3920,698 @@ function showTaskPopup(message) {
     popup.classList.remove("show");
     setTimeout(() => popup.remove(), 600);
   }, 3500);
+}
+
+// ==========================================================================
+// 8. EXAM COUNTDOWN FEATURE
+// ==========================================================================
+
+const examFormToggle = document.getElementById("examFormToggle");
+const examFormBody = document.getElementById("examFormBody");
+const addExamBtn = document.getElementById("addExamBtn");
+const examsGrid = document.getElementById("examsGrid");
+const examEmptyState = document.getElementById("examEmptyState");
+
+let examTimerInterval = null;
+const notifiedExams = new Set(); // Keep track of exams we already notified for in this session
+
+if (examFormToggle) {
+  examFormToggle.addEventListener("click", () => {
+    examFormBody.classList.toggle("collapsed");
+    const icon = examFormToggle.querySelector("i");
+    if (examFormBody.classList.contains("collapsed")) {
+      icon.classList.replace("ri-subtract-line", "ri-add-line");
+    } else {
+      icon.classList.replace("ri-add-line", "ri-subtract-line");
+    }
+  });
+}
+
+if (addExamBtn) {
+  addExamBtn.addEventListener("click", () => {
+    const title = document.getElementById("examTitle").value.trim();
+    const subject = document.getElementById("examSubject").value.trim();
+    const dateStr = document.getElementById("examDate").value;
+    const notes = document.getElementById("examNotes").value.trim();
+
+    if (!title || !subject || !dateStr) {
+      announce("Please fill in Title, Subject, and Date to add an exam.");
+      showTaskPopup("Missing exam details! 🚨");
+      return;
+    }
+
+    const exam = {
+      id: Date.now(),
+      title,
+      subject,
+      date: new Date(dateStr).getTime(),
+      notes,
+      createdAt: Date.now()
+    };
+
+    exams.push(exam);
+    // Sort exams chronologically
+    exams.sort((a, b) => a.date - b.date);
+
+    saveData();
+    renderExams();
+    renderCalendar();
+    announce(`Added exam: ${title}`);
+
+    // Add notification for new exam tracked
+    addNotification({ type: 'exam', title: `Exam tracked: ${title}`, body: `${subject} — ${new Date(exam.date).toLocaleString()}`, ref: `exam-${exam.id}` });
+
+    // Clear form
+    document.getElementById("examTitle").value = "";
+    document.getElementById("examSubject").value = "";
+    document.getElementById("examDate").value = "";
+    document.getElementById("examNotes").value = "";
+
+    // Collapse form
+    examFormBody.classList.add("collapsed");
+    examFormToggle.querySelector("i").classList.replace("ri-subtract-line", "ri-add-line");
+  });
+}
+
+function deleteExam(id) {
+  exams = exams.filter(e => e.id !== id);
+  saveData();
+  renderExams();
+}
+
+function updateExamsCountdown() {
+  const cards = examsGrid.querySelectorAll(".exam-card");
+  const now = Date.now();
+
+  cards.forEach(card => {
+    const examId = parseInt(card.dataset.id);
+    const exam = exams.find(e => e.id === examId);
+    if (!exam) return;
+
+    const timeDiff = exam.date - now;
+    
+    const dEl = card.querySelector(".cd-d");
+    const hEl = card.querySelector(".cd-h");
+    const mEl = card.querySelector(".cd-m");
+    const sEl = card.querySelector(".cd-s");
+
+    if (timeDiff <= 0) {
+      dEl.textContent = "00";
+      hEl.textContent = "00";
+      mEl.textContent = "00";
+      sEl.textContent = "00";
+      card.className = "exam-card urgency-red"; // Completed or missed
+      return;
+    }
+
+    // Time calculations
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((timeDiff / 1000 / 60) % 60);
+    const seconds = Math.floor((timeDiff / 1000) % 60);
+
+    dEl.textContent = String(days).padStart(2, "0");
+    hEl.textContent = String(hours).padStart(2, "0");
+    mEl.textContent = String(minutes).padStart(2, "0");
+    sEl.textContent = String(seconds).padStart(2, "0");
+
+    // Dynamic Urgency Coloring & Progress Bar
+    const totalDuration = exam.date - exam.createdAt;
+    let progressPercent = totalDuration > 0 ? ((now - exam.createdAt) / totalDuration) * 100 : 100;
+    progressPercent = Math.max(0, Math.min(100, progressPercent)); // clamp 0-100
+
+    const progressFill = card.querySelector(".exam-progress-fill");
+    if (progressFill) progressFill.style.width = `${progressPercent}%`;
+
+    let urgencyClass = "urgency-green";
+    if (timeDiff < 24 * 60 * 60 * 1000) {
+      urgencyClass = "urgency-red";
+      // Trigger notification once if < 24h
+      if (!notifiedExams.has(exam.id)) {
+        sendNotification("Urgent Exam!", `${exam.title} is in less than 24 hours!`);
+        addNotification({ type: 'exam', title: `Exam soon: ${exam.title}`, body: `${exam.subject} in <24 hours`, ref: `exam-urgent-${exam.id}` });
+        notifiedExams.add(exam.id);
+      }
+    } else if (timeDiff < 3 * 24 * 60 * 60 * 1000) {
+      urgencyClass = "urgency-orange";
+    }
+
+    // Update class efficiently
+    card.className = `exam-card ${urgencyClass}`;
+  });
+}
+
+function renderExams() {
+  if (!examsGrid) return;
+
+  // Clear existing interval if any
+  if (examTimerInterval) clearInterval(examTimerInterval);
+
+  // Clear grid (keep empty state)
+  const existingCards = examsGrid.querySelectorAll(".exam-card");
+  existingCards.forEach(c => c.remove());
+
+  // Show/hide empty state
+  if (exams.length === 0) {
+    if (examEmptyState) examEmptyState.style.display = "block";
+    return;
+  }
+  
+  if (examEmptyState) examEmptyState.style.display = "none";
+
+  // Render cards
+  exams.forEach(exam => {
+    const card = document.createElement("div");
+    card.className = "exam-card";
+    card.dataset.id = exam.id;
+    
+    // Format date string for display (e.g., Nov 24, 2026 - 10:00 AM)
+    const dateObj = new Date(exam.date);
+    const dateOptions = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+    const dateStr = dateObj.toLocaleDateString(undefined, dateOptions);
+
+    card.innerHTML = `
+      <div class="exam-header">
+        <div class="exam-info">
+          <h4>${escapeHtml(exam.title)}</h4>
+          <p><i class="ri-book-read-line"></i> ${escapeHtml(exam.subject)}</p>
+          <p style="margin-top: 2px;"><i class="ri-calendar-line"></i> ${dateStr}</p>
+        </div>
+        <button class="exam-delete-btn" aria-label="Delete Exam" onclick="deleteExam(${exam.id})">
+          <i class="ri-delete-bin-line"></i>
+        </button>
+      </div>
+
+      <div class="exam-countdown-display">
+        <div class="cd-box"><span class="cd-num cd-d">00</span><span class="cd-lbl">Days</span></div>
+        <div class="cd-box"><span class="cd-num cd-h">00</span><span class="cd-lbl">Hours</span></div>
+        <div class="cd-box"><span class="cd-num cd-m">00</span><span class="cd-lbl">Mins</span></div>
+        <div class="cd-box"><span class="cd-num cd-s">00</span><span class="cd-lbl">Secs</span></div>
+      </div>
+
+      <div class="exam-progress-wrap">
+        <div class="exam-progress-bar">
+          <div class="exam-progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+      
+      ${exam.notes ? `<div class="exam-footer-notes"><i class="ri-information-line"></i> ${escapeHtml(exam.notes)}</div>` : ''}
+    `;
+    examsGrid.appendChild(card);
+  });
+
+}
+
+
+// Call renderExams once data is loaded (add to window.onload block)
+window.addEventListener('load', () => {
+  renderExams();
+  renderVault();
+  renderProjects();
+});
+
+// ==========================================================================
+// 10. MASTER PROJECTS & SUBTASKS FEATURE
+// ==========================================================================
+
+const addProjectBtn = document.getElementById("addProjectBtn");
+const projectFormBody = document.getElementById("projectFormBody");
+const cancelProjectBtn = document.getElementById("cancelProjectBtn");
+const saveProjectBtn = document.getElementById("saveProjectBtn");
+const newProjectTitleInput = document.getElementById("newProjectTitle");
+const projectsGrid = document.getElementById("projectsGrid");
+
+// Global dragging state
+let draggedSubtask = null;
+let draggedSubtaskParentId = null;
+
+if (addProjectBtn && projectFormBody) {
+  addProjectBtn.addEventListener("click", () => {
+    projectFormBody.style.display = "block";
+    newProjectTitleInput.focus();
+  });
+
+  cancelProjectBtn.addEventListener("click", () => {
+    projectFormBody.style.display = "none";
+    newProjectTitleInput.value = "";
+  });
+
+  saveProjectBtn.addEventListener("click", () => {
+    const title = newProjectTitleInput.value.trim();
+    if (!title) {
+      announce("Please enter a project name.");
+      return;
+    }
+
+    const newProject = {
+      id: Date.now(),
+      title: title,
+      subtasks: []
+    };
+
+    projects.push(newProject);
+    saveData();
+    renderProjects();
+    
+    projectFormBody.style.display = "none";
+    newProjectTitleInput.value = "";
+    announce(`Created project: ${title}`);
+  });
+}
+
+function calculateProjectProgress(subtasks) {
+  if (subtasks.length === 0) return 0;
+  const completed = subtasks.filter(st => st.completed).length;
+  return Math.round((completed / subtasks.length) * 100);
+}
+
+function toggleSubtask(projectId, subtaskId) {
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return;
+  
+  const st = proj.subtasks.find(s => s.id === subtaskId);
+  if (!st) return;
+
+  st.completed = !st.completed;
+  saveData();
+  renderProjects();
+
+  if (st.completed) {
+    showTaskPopup("Subtask Completed! ✨");
+    announce("Subtask completed.");
+  } else {
+    announce("Subtask unchecked.");
+  }
+}
+
+function addSubtask(projectId) {
+  const inputEl = document.getElementById(`newSubtaskInput-${projectId}`);
+  if (!inputEl) return;
+  
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  proj.subtasks.push({
+    id: Date.now() + Math.random().toString(36).substr(2, 5),
+    text: text,
+    completed: false
+  });
+
+  saveData();
+  renderProjects();
+}
+
+function deleteSubtask(projectId, subtaskId) {
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  proj.subtasks = proj.subtasks.filter(s => s.id !== subtaskId);
+  saveData();
+  renderProjects();
+}
+
+function deleteProject(projectId) {
+  if (confirm("Are you sure you want to delete this master project?")) {
+    projects = projects.filter(p => p.id !== projectId);
+    saveData();
+    renderProjects();
+  }
+}
+
+// Drag & Drop specific to Subtasks
+function handleSubtaskDragStart(e, projectId, subtaskId) {
+  draggedSubtask = subtaskId;
+  draggedSubtaskParentId = projectId;
+  e.target.classList.add('dragging');
+  // Required for Firefox
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', subtaskId);
+}
+
+function handleSubtaskDragEnd(e) {
+  e.target.classList.remove('dragging');
+  draggedSubtask = null;
+  draggedSubtaskParentId = null;
+  
+  // Clean up any remaining drop indicators if necessary
+  const allContainers = document.querySelectorAll('.subtasks-list');
+  allContainers.forEach(c => c.style.border = "");
+}
+
+function handleSubtaskDragOver(e, projectId) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  
+  // Only allow reordering within the SAME project to prevent bugs
+  if (draggedSubtaskParentId !== projectId) return;
+
+  const container = document.getElementById(`subtaskList-${projectId}`);
+  const draggingItem = document.querySelector('.subtask-item.dragging');
+  if (!container || !draggingItem) return;
+
+  const afterElement = getDragAfterElement(container, e.clientY, '.subtask-item:not(.dragging)');
+  if (afterElement == null) {
+    container.appendChild(draggingItem);
+  } else {
+    container.insertBefore(draggingItem, afterElement);
+  }
+}
+
+function handleSubtaskDrop(e, projectId) {
+  e.preventDefault();
+  if (draggedSubtaskParentId !== projectId) return;
+
+  // Re-calculate the array order based on DOM
+  const container = document.getElementById(`subtaskList-${projectId}`);
+  if (!container) return;
+
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  const newOrderIds = Array.from(container.querySelectorAll('.subtask-item')).map(item => item.dataset.subtaskId);
+  
+  // Rebuild the subtasks array based on the new order
+  const newSubtasksArray = [];
+  newOrderIds.forEach(id => {
+    const st = proj.subtasks.find(s => s.id === id);
+    if (st) newSubtasksArray.push(st);
+  });
+
+  proj.subtasks = newSubtasksArray;
+  saveData();
+  // No need to re-render immediately as the DOM is already visually updated, 
+  // but rendering ensures progress bars etc stay perfectly synced.
+  renderProjects();
+}
+
+function renderProjects() {
+  if (!projectsGrid) return;
+  projectsGrid.innerHTML = '';
+
+  if (projects.length === 0) {
+    projectsGrid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; color: var(--text-light); padding: 30px;">
+        <i class="ri-rocket-2-line" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p style="margin-top: 10px;">No master projects yet. Break down a big goal today!</p>
+      </div>
+    `;
+    return;
+  }
+
+  projects.forEach(proj => {
+    const progress = calculateProjectProgress(proj.subtasks);
+    
+    const card = document.createElement("div");
+    card.className = "project-card";
+    
+    // Header & Progress
+    let html = `
+      <div class="project-header">
+        <h3>${escapeHtml(proj.title)}</h3>
+        <button class="subtask-delete-btn" style="opacity: 1;" onclick="deleteProject(${proj.id})" aria-label="Delete Project">
+          <i class="ri-delete-bin-line"></i>
+        </button>
+      </div>
+      <div class="project-progress-wrap">
+        <div class="project-progress-text">
+          <span>Progress</span>
+          <span style="font-weight: 600; color: ${progress === 100 ? '#10b981' : 'var(--text)'};">${progress}%</span>
+        </div>
+        <div class="project-progress-bar">
+          <div class="project-progress-fill" style="width: ${progress}%;"></div>
+        </div>
+      </div>
+      <div class="subtasks-list" id="subtaskList-${proj.id}">
+    `;
+
+    // Subtasks Array
+    proj.subtasks.forEach(st => {
+      html += `
+        <div class="subtask-item" data-subtask-id="${st.id}" draggable="true" 
+             ondragstart="handleSubtaskDragStart(event, ${proj.id}, '${st.id}')"
+             ondragend="handleSubtaskDragEnd(event)">
+          <i class="ri-draggable subtask-drag-handle"></i>
+          <input type="checkbox" class="subtask-checkbox" ${st.completed ? 'checked' : ''} onclick="toggleSubtask(${proj.id}, '${st.id}')">
+          <span class="subtask-text">${escapeHtml(st.text)}</span>
+          <button class="subtask-delete-btn" onclick="deleteSubtask(${proj.id}, '${st.id}')">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+      `;
+    });
+
+    html += `
+      </div>
+      <div class="add-subtask-form">
+        <input type="text" class="add-subtask-input" id="newSubtaskInput-${proj.id}" placeholder="Add a subtask..." onkeypress="if(event.key === 'Enter') addSubtask(${proj.id})">
+        <button class="add-subtask-btn" onclick="addSubtask(${proj.id})"><i class="ri-add-line"></i></button>
+      </div>
+    `;
+
+    card.innerHTML = html;
+
+    // Attach dragover/drop to the subtask list container dynamically
+    const listContainer = card.querySelector(`#subtaskList-${proj.id}`);
+    if (listContainer) {
+      listContainer.addEventListener('dragover', (e) => handleSubtaskDragOver(e, proj.id));
+      listContainer.addEventListener('drop', (e) => handleSubtaskDrop(e, proj.id));
+    }
+
+    projectsGrid.appendChild(card);
+  });
+}
+
+// ==========================================================================
+// 9. FILES VAULT FEATURE (ATTACHMENTS & STORAGE)
+// ==========================================================================
+
+const vaultDropZone = document.getElementById("vaultDropZone");
+const vaultFileInput = document.getElementById("vaultFileInput");
+const vaultBrowseBtn = document.getElementById("vaultBrowseBtn");
+const vaultFilesGrid = document.getElementById("vaultFilesGrid");
+const vaultEmptyState = document.getElementById("vaultEmptyState");
+const vaultSearch = document.getElementById("vaultSearch");
+const storageFill = document.getElementById("storageFill");
+const storageText = document.getElementById("storageText");
+
+const MAX_FILE_SIZE = 500 * 1024; // 500 KB limit per file due to LocalStorage
+const MAX_STORAGE_QUOTA = 5 * 1024 * 1024; // 5 MB total quota estimate
+
+// Initialize search listener
+if (vaultSearch) {
+  vaultSearch.addEventListener("input", renderVault);
+}
+
+// Clear Vault button binding (added feature)
+const clearVaultBtn = document.getElementById("clearVaultBtn");
+if (clearVaultBtn) {
+  clearVaultBtn.addEventListener("click", clearVault);
+}
+
+// Drag & Drop Handlers
+if (vaultDropZone) {
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, () => {
+      vaultDropZone.classList.add('drag-active');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    vaultDropZone.addEventListener(eventName, () => {
+      vaultDropZone.classList.remove('drag-active');
+    }, false);
+  });
+
+  vaultDropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    handleFiles(files);
+  }, false);
+
+  vaultBrowseBtn.addEventListener('click', () => {
+    vaultFileInput.click();
+  });
+
+  vaultFileInput.addEventListener('change', function() {
+    handleFiles(this.files);
+    // Reset input so same file can be selected again
+    this.value = '';
+  });
+}
+
+function getStorageUsed() {
+  let totalBytes = 0;
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      totalBytes += ((localStorage[key].length + key.length) * 2); // rough estimate in bytes
+    }
+  }
+  return totalBytes;
+}
+
+function updateStorageUI() {
+  if (!storageFill || !storageText) return;
+  const usedBytes = getStorageUsed();
+  let percent = (usedBytes / MAX_STORAGE_QUOTA) * 100;
+  percent = Math.min(100, percent);
+  
+  storageFill.style.width = `${percent}%`;
+  
+  if (percent > 90) {
+    storageFill.style.background = "#ef4444"; // Red if almost full
+  } else if (percent > 75) {
+    storageFill.style.background = "#f59e0b"; // Orange
+  } else {
+    storageFill.style.background = "linear-gradient(90deg, var(--primary), var(--secondary))";
+  }
+
+  storageText.textContent = `${(usedBytes / 1024).toFixed(1)} KB / ${(MAX_STORAGE_QUOTA / 1024 / 1024).toFixed(1)} MB Used`;
+}
+
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function handleFiles(files) {
+  const filesArray = Array.from(files);
+  let filesAdded = 0;
+
+  filesArray.forEach(file => {
+    if (file.size > MAX_FILE_SIZE) {
+      announce(`File "${file.name}" is too large! Max size is 500KB.`);
+      showTaskPopup(`"${file.name}" too large! 🚨`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Data = e.target.result;
+      
+      const newFileObj = {
+        id: Date.now() + Math.random().toString(36).substr(2, 5),
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        data: base64Data,
+        addedAt: Date.now()
+      };
+
+      vaultFiles.push(newFileObj);
+      filesAdded++;
+
+      // Check if this is the last file to process
+      if (filesAdded === filesArray.length) {
+        saveData();
+        renderVault();
+        announce(`Uploaded ${filesAdded} file(s) to vault.`);
+        showTaskPopup("Files securely vaulted! 🛡️");
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function deleteVaultFile(id) {
+  vaultFiles = vaultFiles.filter(f => f.id !== id);
+  saveData();
+  renderVault();
+  announce("File deleted from vault.");
+}
+
+// New feature: Clear entire vault after confirmation
+function clearVault() {
+  const proceed = confirm("Are you sure you want to clear all files from the vault? This action cannot be undone.");
+  if (!proceed) return;
+  vaultFiles = [];
+  saveData();
+  renderVault();
+  announce("All files removed from vault.");
+  try { showTaskPopup("Vault cleared."); } catch (e) { /* ignore if popup not available */ }
+}
+
+function downloadVaultFile(id) {
+  const file = vaultFiles.find(f => f.id === id);
+  if (!file) return;
+
+  const a = document.createElement("a");
+  a.href = file.data;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function renderVault() {
+  if (!vaultFilesGrid) return;
+  updateStorageUI();
+
+  // Clear existing cards
+  const existingCards = vaultFilesGrid.querySelectorAll(".vault-card");
+  existingCards.forEach(c => c.remove());
+
+  const searchTerm = vaultSearch ? vaultSearch.value.toLowerCase() : "";
+  const filteredFiles = vaultFiles.filter(f => f.name.toLowerCase().includes(searchTerm));
+
+  if (filteredFiles.length === 0) {
+    if (vaultEmptyState) vaultEmptyState.style.display = "block";
+    return;
+  }
+  
+  if (vaultEmptyState) vaultEmptyState.style.display = "none";
+
+  // Sort by newest first
+  filteredFiles.sort((a, b) => b.addedAt - a.addedAt);
+
+  filteredFiles.forEach(file => {
+    const card = document.createElement("div");
+    card.className = "vault-card";
+
+    let previewHtml = "";
+    if (file.type.startsWith("image/")) {
+      previewHtml = `<img src="${file.data}" alt="${file.name}" loading="lazy" />`;
+    } else if (file.type === "application/pdf") {
+      previewHtml = `<i class="ri-file-pdf-2-fill" style="color: #ef4444;"></i>`;
+    } else if (file.type.includes("text")) {
+      previewHtml = `<i class="ri-file-text-fill" style="color: var(--secondary);"></i>`;
+    } else {
+      previewHtml = `<i class="ri-file-fill" style="color: var(--text-light);"></i>`;
+    }
+
+    card.innerHTML = `
+      <div class="vault-card-preview">
+        ${previewHtml}
+      </div>
+      <div class="vault-card-info">
+        <div class="vault-card-name" title="${file.name}">${file.name}</div>
+        <div class="vault-card-size">${formatBytes(file.size)}</div>
+        <div class="vault-card-actions">
+          <button class="vault-action-btn" onclick="downloadVaultFile('${file.id}')" aria-label="Download ${file.name}">
+            <i class="ri-download-2-line"></i> Download
+          </button>
+          <button class="vault-action-btn delete" onclick="deleteVaultFile('${file.id}')" aria-label="Delete ${file.name}">
+            <i class="ri-delete-bin-line"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    vaultFilesGrid.appendChild(card);
+  });
 }
