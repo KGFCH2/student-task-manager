@@ -4,6 +4,136 @@ const addTaskBtn = document.getElementById("addTaskBtn");
 const taskList = document.getElementById("taskList");
 const categorySelect = document.getElementById("categorySelect");
 const taskTemplate = document.getElementById("taskTemplate");
+const taskTagsInput = document.getElementById("taskTagsInput");
+
+let currentTagFilter = "All";
+
+function normalizeTag(tag) {
+  return tag.trim().replace(/\s+/g, " ");
+}
+
+function parseTags(rawValue) {
+  if (!rawValue) return [];
+  const seen = new Set();
+  return rawValue
+    .split(/[,\n]/)
+    .map(normalizeTag)
+    .filter(Boolean)
+    .filter(tag => {
+      const key = tag.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function getTaskTags(task) {
+  if (!task) return [];
+  if (Array.isArray(task.tags)) {
+    return parseTags(task.tags.join(", "));
+  }
+  if (typeof task.tags === "string") {
+    return parseTags(task.tags);
+  }
+  return [];
+}
+
+function getTagColor(tag) {
+  const palette = ["#f97316", "#10b981", "#3b82f6", "#ec4899", "#8b5cf6", "#f59e0b", "#14b8a6", "#ef4444"];
+  const normalized = normalizeTag(tag).toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = (hash << 5) - hash + normalized.charCodeAt(i);
+    hash |= 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function getRecentTags() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("quests_recent_tags") || "[]");
+    return Array.isArray(stored) ? stored.filter(Boolean) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function storeRecentTags(tags) {
+  const next = [];
+  const seen = new Set();
+  [...tags, ...getRecentTags()].forEach(tag => {
+    const normalized = normalizeTag(tag);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    next.push(normalized);
+  });
+  localStorage.setItem("quests_recent_tags", JSON.stringify(next.slice(0, 12)));
+}
+
+function getFrequentTags(limit = 8) {
+  const counts = new Map();
+  tasks.forEach(task => {
+    getTaskTags(task).forEach(tag => {
+      const key = tag.toLowerCase();
+      counts.set(key, { tag, count: (counts.get(key)?.count || 0) + 1 });
+    });
+  });
+
+  const ordered = Array.from(counts.values()).sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.tag.localeCompare(b.tag);
+  }).map(entry => entry.tag);
+
+  const recent = getRecentTags();
+  recent.forEach(tag => {
+    if (!ordered.some(existing => existing.toLowerCase() === tag.toLowerCase())) {
+      ordered.push(tag);
+    }
+  });
+
+  return ordered.slice(0, limit);
+}
+
+function renderTagSuggestions() {
+  const datalist = document.getElementById("taskTagSuggestionsList");
+  if (!datalist) return;
+
+  const tags = getFrequentTags(10);
+  datalist.innerHTML = tags.map(tag => `<option value="${escapeHtml(tag)}"></option>`).join("");
+}
+
+function renderTagFilters() {
+  const container = document.getElementById("tagFilterChips");
+  if (!container) return;
+
+  const tags = getFrequentTags(12);
+  const chips = [
+    `<button type="button" class="tag-chip tag-chip--all ${currentTagFilter === "All" ? "active" : ""}" data-tag="All">All Tags</button>`
+  ];
+
+  tags.forEach(tag => {
+    const color = getTagColor(tag);
+    const active = currentTagFilter.toLowerCase() === tag.toLowerCase();
+    chips.push(`<button type="button" class="tag-chip ${active ? "active" : ""}" data-tag="${escapeHtml(tag)}" style="background:${color};">${escapeHtml(tag)}</button>`);
+  });
+
+  container.innerHTML = chips.join("");
+  container.querySelectorAll("[data-tag]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentTagFilter = btn.dataset.tag || "All";
+      renderTasks();
+    });
+  });
+}
+
+function taskMatchesFilters(task) {
+  const tags = getTaskTags(task);
+  const matchesCategory = currentFilter === "All" || task.category === currentFilter;
+  const matchesTag = currentTagFilter === "All" || tags.some(tag => tag.toLowerCase() === currentTagFilter.toLowerCase());
+  const matchesSearch = !searchQuery || [task.text, task.category, task.priority, ...tags].join(" ").toLowerCase().includes(searchQuery);
+  return matchesCategory && matchesTag && matchesSearch;
+}
 
 // Quick templates: populate input/category/priority when a template is chosen
 if (taskTemplate) {
@@ -16,6 +146,10 @@ if (taskTemplate) {
       if (obj.category && categorySelect) categorySelect.value = obj.category;
       const prioritySelect = document.getElementById("prioritySelect");
       if (prioritySelect && obj.priority) prioritySelect.value = obj.priority;
+      if (taskTagsInput && obj.tags) {
+        const templateTags = Array.isArray(obj.tags) ? obj.tags.join(", ") : obj.tags;
+        taskTagsInput.value = templateTags || "";
+      }
       taskInput.focus();
       // Reset template selector for next use
       taskTemplate.value = "";
@@ -268,6 +402,11 @@ function loadData() {
       tasks.forEach(task => {
         if (task.penaltyApplied === undefined) {
           task.penaltyApplied = false;
+        }
+        if (!Array.isArray(task.tags)) {
+          task.tags = typeof task.tags === "string" ? parseTags(task.tags) : [];
+        } else {
+          task.tags = parseTags(task.tags.join(", "));
         }
       });
     } catch (e) {
@@ -971,6 +1110,7 @@ function addTask() {
 
   const prioritySelect = document.getElementById("prioritySelect");
   const priority = prioritySelect ? prioritySelect.value : "Medium";
+  const tags = parseTags(taskTagsInput ? taskTagsInput.value : "");
 
   const deadlineInput = document.getElementById("deadlineInput");
   const deadline = deadlineInput ? deadlineInput.value : "";
@@ -995,12 +1135,15 @@ function addTask() {
     completed: false,
     createdAt: getFormattedDateTime(new Date()),
     deadline: deadline || null,
-    penaltyApplied: false
+    penaltyApplied: false,
+    tags
   };
 
   tasks.push(task);
   taskInput.value = "";
+  if (taskTagsInput) taskTagsInput.value = "";
   deadlineInput.value = "";
+  storeRecentTags(tags);
 
   // Update analytics created count
   if (!analyticsData.categoryStats[category]) {
@@ -1039,6 +1182,7 @@ function createTaskEl(task) {
 
   const pri = task.priority || "Medium";
   const catEmoji = getCategoryEmoji(task.category);
+  const tags = getTaskTags(task);
 
   div.innerHTML = `
     <div class="drag-handle" title="Drag to reorder"><i class="ri-drag-move-fill"></i></div>
@@ -1051,6 +1195,7 @@ function createTaskEl(task) {
           <span class="priority-pill priority-${pri.toLowerCase()}">${pri}</span>
           <span class="task-timestamp" style="font-size: 11px; color: var(--text-light); opacity: 0.8;"><i class="ri-history-line"></i> ${task.createdAt}</span>
         </div>
+        ${tags.length ? `<div class="task-tags">${tags.map(tag => `<span class="task-tag" style="--tag-color: ${getTagColor(tag)};"><i class="ri-price-tag-3-line"></i>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       </div>
     </div>
     <div class="task-actions">
@@ -1334,9 +1479,7 @@ function renderTasks() {
     taskList.innerHTML = "";
     
     let filteredTasks = tasks;
-    if (currentFilter !== "All") {
-      filteredTasks = tasks.filter(task => task.category === currentFilter);
-    }
+    filteredTasks = filteredTasks.filter(task => taskMatchesFilters(task));
 
     // Apply sort logic
     if (currentSort === "priority") {
@@ -1352,11 +1495,6 @@ function renderTasks() {
       });
     }
 
-    // Apply search query
-    if (searchQuery) {
-      filteredTasks = filteredTasks.filter(task => task.text.toLowerCase().includes(searchQuery));
-    }
-
     if (filteredTasks.length === 0) {
       taskList.innerHTML = `
         <div class="empty-state">
@@ -1365,6 +1503,8 @@ function renderTasks() {
           <p>Add tasks and begin your productivity journey ✨</p>
         </div>
       `;
+      renderTagSuggestions();
+      renderTagFilters();
       updateStats();
       return;
     }
@@ -1408,6 +1548,8 @@ function renderTasks() {
     });
   }
 
+  renderTagSuggestions();
+  renderTagFilters();
   updateStats();
 }
 
@@ -2813,6 +2955,64 @@ function updateAnalyticsDashboard() {
   initTimetableNotifier();
   initCalendarNotifier();
   initDeadlineUpdater();
+
+  const addTaskBtnEl = document.getElementById("addTaskBtn");
+  if (addTaskBtnEl) {
+    addTaskBtnEl.addEventListener("click", addTask);
+  }
+
+  taskInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTask();
+    }
+  });
+
+  taskTagsInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTask();
+    }
+  });
+
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.trim().toLowerCase();
+      renderTasks();
+    });
+  }
+
+  document.querySelectorAll('.filters .filter-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentFilter = btn.dataset.filter || 'All';
+      document.querySelectorAll('.filters .filter-btn[data-filter]').forEach(item => {
+        item.classList.toggle('active', item === btn);
+      });
+      renderTasks();
+    });
+  });
+
+  document.querySelectorAll('.filters .filter-btn[data-sort]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSort = btn.dataset.sort || 'default';
+      document.querySelectorAll('.filters .filter-btn[data-sort]').forEach(item => {
+        item.classList.toggle('active', item === btn);
+      });
+      renderTasks();
+    });
+  });
+
+  document.getElementById('resetTasksBtn')?.addEventListener('click', () => {
+    if (!confirm('Clear all tasks?')) return;
+    tasks = [];
+    searchQuery = '';
+    currentFilter = 'All';
+    currentTagFilter = 'All';
+    saveData();
+    renderTasks();
+    document.getElementById('searchInput') && (document.getElementById('searchInput').value = '');
+  });
 
 
 
