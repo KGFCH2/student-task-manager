@@ -438,6 +438,26 @@ body {
 .timer {
   font-size: 72px;
   font-weight: 900;
+
+/* Drag & Drop visual helpers */
+.sortable-list .task,
+.sortable-list li {
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 120ms ease;
+  will-change: transform, opacity;
+}
+
+.task.dragging,
+.sortable-list .dragging,
+.touch-dragging-active {
+  transform: scale(0.98);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+  opacity: 0.95;
+}
+
+.drag-handle { cursor: grab; }
+.drag-handle:active { cursor: grabbing; }
+
+.touch-dragging-active { position: relative; z-index: 9999; }
   margin-bottom: 28px;
   background: linear-gradient(135deg, var(--primary), var(--secondary));
   -webkit-background-clip: text;

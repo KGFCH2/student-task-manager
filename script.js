@@ -328,6 +328,115 @@ function saveData() {
   localStorage.setItem("quests_calendar", JSON.stringify(calendarEvents));
 }
 
+// ==========================
+// Drag & Drop: Persist order
+// ==========================
+function enableDragAndDrop() {
+  // Task list (div), daily goals (ul), assignments (div)
+  const dailyGoalsList = document.getElementById("dailyGoalsList");
+  const asgnList = document.getElementById("asgnList");
+
+  // Generic initializer for a container whose children are sortable
+  function makeSortable(container, type) {
+    if (!container) return;
+    container.classList.add("sortable-list");
+
+    let dragEl = null;
+
+    container.addEventListener("dragstart", (e) => {
+      dragEl = e.target;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', 'drag'); } catch (err) {}
+      e.target.classList.add('dragging');
+      requestAnimationFrame(() => e.target.style.opacity = '0.6');
+    });
+
+    container.addEventListener("dragend", (e) => {
+      if (e.target) e.target.classList.remove('dragging');
+      if (e.target) e.target.style.opacity = '';
+      dragEl = null;
+      persistOrder(type);
+    });
+
+    container.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(container, e.clientY);
+      const dragging = container.querySelector('.dragging');
+      if (!dragging) return;
+      if (afterElement == null) {
+        container.appendChild(dragging);
+      } else {
+        container.insertBefore(dragging, afterElement);
+      }
+    });
+
+    // Touch support for mobile (fallback)
+    let touchDragEl = null;
+    container.addEventListener('touchstart', (e) => {
+      const target = e.target.closest('[data-id]');
+      if (!target) return;
+      touchDragEl = target;
+      target.classList.add('dragging');
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (!touchDragEl) return;
+      const touch = e.touches[0];
+      const after = getDragAfterElement(container, touch.clientY);
+      if (after == null) container.appendChild(touchDragEl);
+      else container.insertBefore(touchDragEl, after);
+      e.preventDefault();
+    }, { passive: false });
+
+    container.addEventListener('touchend', (e) => {
+      if (touchDragEl) touchDragEl.classList.remove('dragging');
+      touchDragEl = null;
+      persistOrder(type);
+    });
+  }
+
+  makeSortable(taskList, 'tasks');
+  makeSortable(dailyGoalsList, 'dailyGoals');
+  makeSortable(asgnList, 'assignments');
+}
+
+// removed duplicate getDragAfterElement (using generic version below)
+
+function persistOrder(type) {
+  try {
+    if (type === 'tasks') {
+      // Collect ids from taskList children in order
+      const ids = Array.from(taskList.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      // Reorder tasks array to match ids
+      tasks = ids.map(id => tasks.find(t => String(t.id) === String(id))).filter(Boolean);
+      saveData();
+      renderTasks();
+    } else if (type === 'dailyGoals') {
+      const daily = document.getElementById('dailyGoalsList');
+      const goals = Array.from(daily.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      const stored = JSON.parse(localStorage.getItem('daily_goals') || '[]');
+      const newOrder = goals.map(id => stored.find(g => String(g.id) === String(id))).filter(Boolean);
+      localStorage.setItem('daily_goals', JSON.stringify(newOrder));
+      renderDailyGoals();
+    } else if (type === 'assignments') {
+      const asgn = document.getElementById('asgnList');
+      const order = Array.from(asgn.querySelectorAll('[data-id]')).map(n => n.dataset.id);
+      const stored = JSON.parse(localStorage.getItem('quests_exams') || '[]');
+      const newOrder = order.map(id => stored.find(a => String(a.id) === String(id))).filter(Boolean);
+      localStorage.setItem('quests_exams', JSON.stringify(newOrder));
+      loadData();
+      renderAssignments();
+    }
+  } catch (e) {
+    console.error('Persist order failed', e);
+  }
+}
+
+// Initialize drag & drop after DOM ready and initial render
+document.addEventListener('DOMContentLoaded', () => {
+  enableDragAndDrop();
+});
+
 // Generate beautiful visual mock data for past 15 days if empty
 function initializeAnalyticsData() {
   analyticsData = {
@@ -943,7 +1052,7 @@ function saveTaskOrder() {
 }
 
 function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll(".task:not(.dragging)")];
+  const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
 
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
