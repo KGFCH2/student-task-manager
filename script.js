@@ -129,6 +129,41 @@ function getTagColor(tag) {
   return palette[Math.abs(hash) % palette.length];
 }
 
+
+// Subject color mapping - deterministic, consistent, accessible
+function getSubjectColor(subject) {
+  if (!subject) return '#94a3b8';
+  const palette = [
+    '#06b6d4', // cyan
+    '#8b5cf6', // purple
+    '#10b981', // green
+    '#f97316', // orange
+    '#ef4444', // red
+    '#3b82f6', // blue
+    '#f59e0b', // amber
+    '#a78bfa'  // violet
+  ];
+  const key = normalizeTag(subject).toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
+function getContrastColor(hex) {
+  if (!hex) return '#fff';
+  const c = hex.replace('#','');
+  const r = parseInt(c.substring(0,2),16);
+  const g = parseInt(c.substring(2,4),16);
+  const b = parseInt(c.substring(4,6),16);
+  // relative luminance
+  const luminance = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+  return luminance > 0.6 ? '#0b1220' : '#ffffff';
+}
+
+
 function getRecentTags() {
   try {
     const stored = JSON.parse(localStorage.getItem("quests_recent_tags") || "[]");
@@ -329,6 +364,8 @@ let tasks = [];
 let exams = [];
 let vaultFiles = [];
 let projects = [];
+let recurringTemplates = [];
+let timetableEntries = [];
 let currentFilter = "All";
 let currentSort = "default";
 let searchQuery = "";
@@ -629,6 +666,18 @@ function loadData() {
       calendarEvents = [];
     }
   }
+
+  // Load recurring templates
+  try {
+    const raw = localStorage.getItem('recurring_templates');
+    recurringTemplates = raw ? JSON.parse(raw) : [];
+  } catch (e) { recurringTemplates = []; }
+
+  // Load timetable
+  try {
+    const rawT = localStorage.getItem('timetable_entries');
+    timetableEntries = rawT ? JSON.parse(rawT) : [];
+  } catch (e) { timetableEntries = []; }
 }
 
 function saveData() {
@@ -645,6 +694,9 @@ function saveData() {
   localStorage.setItem("quests_timetable", JSON.stringify(timetable));
   localStorage.setItem("quests_subjects", JSON.stringify(subjects));
   localStorage.setItem("quests_calendar", JSON.stringify(calendarEvents));
+  // persist recurring templates
+  try { localStorage.setItem('recurring_templates', JSON.stringify(recurringTemplates || [])); } catch(e){}
+  try { localStorage.setItem('timetable_entries', JSON.stringify(timetableEntries || [])); } catch(e){}
 }
 
 // ==========================
@@ -1319,6 +1371,8 @@ function addTask() {
 
   const deadlineInput = document.getElementById("deadlineInput");
   const deadline = deadlineInput ? deadlineInput.value : "";
+  const recurrenceSelect = document.getElementById('recurrenceSelect');
+  const recurrence = recurrenceSelect ? (recurrenceSelect.value || 'none') : 'none';
 
   if (text === "") {
     taskInput.classList.add("input-invalid");
@@ -1343,6 +1397,23 @@ function addTask() {
     penaltyApplied: false,
     tags
   };
+
+  // attach recurrence metadata
+  if (recurrence && recurrence !== 'none') {
+    task.recurrence = recurrence;
+    // create a recurring template to auto-generate future instances
+    const template = {
+      id: `rt-${Date.now()}`,
+      text,
+      category,
+      priority,
+      recurrence,
+      active: true,
+      startDate: deadline || new Date().toISOString()
+    };
+    recurringTemplates.push(template);
+    task.masterId = template.id;
+  }
 
   tasks.push(task);
   taskInput.value = "";
@@ -1389,6 +1460,10 @@ function createTaskEl(task) {
   const catEmoji = getCategoryEmoji(task.category);
   const tags = getTaskTags(task);
 
+  const subjectColor = getSubjectColor(task.category);
+  const subjectTextColor = getContrastColor(subjectColor);
+
+
   div.innerHTML = `
     <div class="drag-handle" title="Drag to reorder"><i class="ri-drag-move-fill"></i></div>
     <div class="task-left">
@@ -1396,8 +1471,9 @@ function createTaskEl(task) {
       <div>
         <h3 class="task-title">${escapeHtml(task.text)}</h3>
         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
-          <p class="task-category" style="margin: 0;">${catEmoji} ${task.category}</p>
+          <p class="task-category" style="margin: 0;"><span class="subject-pill" style="background: ${subjectColor}; color: ${subjectTextColor};">${catEmoji} ${escapeHtml(task.category)}</span></p>
           <span class="priority-pill priority-${pri.toLowerCase()}">${pri}</span>
+          ${task.recurrence && task.recurrence !== 'none' ? `<span class="recurrence-pill" data-type="${escapeHtml(task.recurrence)}" title="Recurring: ${escapeHtml(task.recurrence)}">${escapeHtml(task.recurrence)}</span>` : ''}
           <span class="task-timestamp" style="font-size: 11px; color: var(--text-light); opacity: 0.8;"><i class="ri-history-line"></i> ${task.createdAt}</span>
         </div>
         ${tags.length ? `<div class="task-tags">${tags.map(tag => `<span class="task-tag" style="--tag-color: ${getTagColor(tag)};"><i class="ri-price-tag-3-line"></i>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
@@ -1484,6 +1560,37 @@ function createTaskEl(task) {
     renderTasks();
     announce(`Task deleted: "${task.text}"`);
   });
+
+  // recurrence pill click -> edit/stop recurring if this task belongs to a template
+  const recEl = div.querySelector('.recurrence-pill');
+  if (recEl) {
+    recEl.style.cursor = 'pointer';
+    recEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const masterId = task.masterId;
+      if (!masterId) return alert('No recurring template found');
+      const tpl = recurringTemplates.find(t => t.id === masterId);
+      if (!tpl) return alert('Recurring template missing');
+      const choice = prompt('Edit recurrence (none/daily/weekly/monthly) or type REMOVE to stop recurring:', tpl.recurrence || 'daily');
+      if (!choice) return;
+      const val = choice.trim().toLowerCase();
+      if (val === 'remove' || val === 'none') {
+        // remove template
+        recurringTemplates = recurringTemplates.filter(t => t.id !== masterId);
+        // clear recurrence flag from existing tasks
+        tasks.forEach(t => { if (t.masterId === masterId) { delete t.recurrence; delete t.masterId; } });
+        saveData();
+        if (window && window.showToast) window.showToast('Recurring schedule removed', 'info');
+      } else if (['daily','weekly','monthly'].includes(val)) {
+        tpl.recurrence = val;
+        saveData();
+        if (window && window.showToast) window.showToast('Recurrence updated', 'success');
+      } else {
+        if (window && window.showToast) window.showToast('No changes made', 'info');
+      }
+      renderTasks();
+    });
+  }
 
   // Edit task event
   div.querySelector(".edit-btn").addEventListener("click", () => {
@@ -3036,6 +3143,7 @@ function renderStreakTracker() {
   if (goalLeft) goalLeft.textContent = remaining;
   if (xpReward) xpReward.textContent = `+${todayMetrics.completed * 20} XP`;
 
+
   renderWeeklyStreak();
   updateGamification();
 }
@@ -3063,6 +3171,37 @@ function completeDailyGoal() {
   checkAchievements();
   announce("Today's goal completed — streak progress updated.");
 }
+
+
+
+  renderWeeklyStreak();
+  updateGamification();
+}
+
+function logStudyMinutes(minutes = 25) {
+  const today = getFormattedDate(new Date());
+  analyticsData.dailyStudyMinutes[today] = (analyticsData.dailyStudyMinutes[today] || 0) + minutes;
+  analyticsData.completedTasksPerDay[today] = Math.max(analyticsData.completedTasksPerDay[today] || 0, 1);
+  xp += 15;
+  updateStreakMetrics();
+  saveData();
+  renderStreakTracker();
+  checkAchievements();
+  announce(`Logged ${minutes} minutes of study. Keep the streak alive!`);
+}
+
+function completeDailyGoal() {
+  const today = getFormattedDate(new Date());
+  analyticsData.completedTasksPerDay[today] = Math.max(analyticsData.completedTasksPerDay[today] || 0, 5);
+  analyticsData.dailyStudyMinutes[today] = Math.max(analyticsData.dailyStudyMinutes[today] || 0, 60);
+  xp += 40;
+  updateStreakMetrics();
+  saveData();
+  renderStreakTracker();
+  checkAchievements();
+  announce("Today's goal completed — streak progress updated.");
+}
+
 
 function announce(message) {
   const liveRegion = document.getElementById("liveRegion");
@@ -3121,6 +3260,7 @@ function updateAnalyticsDashboard() {
   }
 
 
+
   loadData();
   updateStreakMetrics();
   updateGamification();
@@ -3145,6 +3285,34 @@ function updateAnalyticsDashboard() {
       if (bell) bell.setAttribute('aria-expanded', 'false');
     }
   });
+
+
+
+  loadData();
+  updateStreakMetrics();
+  updateGamification();
+  renderTasks();
+  renderAchievements();
+  renderWeeklyStreak();
+  renderStreakTracker();
+  updateDisplay();
+  renderPerformance();
+  renderTimetable();
+  renderCalendar();
+  renderProfile();
+  renderSubjectTracker();
+  renderHeatmap(15);
+
+  // Close panel if clicking outside
+  document.addEventListener('click', (e) => {
+    if (!panel) return;
+    const target = e.target;
+    if (!panel.contains(target) && !bell.contains(target)) {
+      panel.style.display = 'none';
+      if (bell) bell.setAttribute('aria-expanded', 'false');
+    }
+  });
+
 
   if (markAllBtn) markAllBtn.addEventListener('click', () => markAllRead());
   if (clearAllBtn) clearAllBtn.addEventListener('click', () => clearAllNotifications());
@@ -3179,11 +3347,22 @@ function updateAnalyticsDashboard() {
     });
   }
 
+
   document.addEventListener('click', () => { if (exportMenu) exportMenu.style.display = 'none'; });
 
   if (exportCsvBtn) exportCsvBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsCSV(); exportMenu.style.display='none'; });
   if (exportPngBtn) exportPngBtn.addEventListener('click', (e) => { e.stopPropagation(); exportChartsPNG(); exportMenu.style.display='none'; });
   if (exportPdfBtn) exportPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsPDF(); exportMenu.style.display='none'; });
+
+
+
+
+  document.addEventListener('click', () => { if (exportMenu) exportMenu.style.display = 'none'; });
+
+  if (exportCsvBtn) exportCsvBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsCSV(); exportMenu.style.display='none'; });
+  if (exportPngBtn) exportPngBtn.addEventListener('click', (e) => { e.stopPropagation(); exportChartsPNG(); exportMenu.style.display='none'; });
+  if (exportPdfBtn) exportPdfBtn.addEventListener('click', (e) => { e.stopPropagation(); exportAnalyticsPDF(); exportMenu.style.display='none'; });
+
 
 
   // Notifications init
@@ -3261,7 +3440,7 @@ function updateAnalyticsDashboard() {
 
   const ctaAddSubject = document.getElementById('ctaAddSubject');
   if (ctaAddSubject) ctaAddSubject.addEventListener('click', () => { const s = document.getElementById('subjectInputForm'); if (s) { s.style.display='grid'; s.querySelector('input')?.focus(); } });
->>>>>>> 054ebbbb9cecb4be9ec267ac3d1e445c31708ce6
+
 
   document.getElementById("logStudyBtn")?.addEventListener("click", () => {
     logStudyMinutes(25);
@@ -3947,6 +4126,257 @@ window.addEventListener('load', () => {
   renderExams();
   renderVault();
   renderProjects();
+  renderLabRecords && renderLabRecords();
+  // generate recurring tasks on load
+  generateRecurringTasks();
+  // render timetable
+  renderTimetable();
+});
+
+function getSubjectColorSafe(subject) {
+  if (typeof getSubjectColor === 'function') return getSubjectColor(subject);
+  // fallback deterministic color map
+  const colors = ['#ef4444','#f97316','#f59e0b','#10b981','#06b6d4','#3b82f6','#8b5cf6'];
+  let h = 0; for (let i=0;i<subject.length;i++) h = (h<<5)-h+subject.charCodeAt(i);
+  return colors[Math.abs(h) % colors.length];
+}
+
+function renderTimetable() {
+  const container = document.getElementById('timetableContainer');
+  if (!container) return;
+  const days = ['mon','tue','wed','thu','fri','sat','sun'];
+  container.innerHTML = '';
+  days.forEach(day => {
+    const col = document.createElement('div'); col.className = 'tt-column';
+    const title = document.createElement('h4'); title.textContent = day.toUpperCase(); col.appendChild(title);
+    const items = timetableEntries.filter(e => e.day === day).sort((a,b)=>a.startTime.localeCompare(b.startTime));
+    if (items.length === 0) {
+      const empty = document.createElement('div'); empty.style.opacity = '0.6'; empty.style.fontSize='12px'; empty.textContent = 'No classes'; col.appendChild(empty);
+    } else {
+      items.forEach(it => {
+        const el = document.createElement('div'); el.className = 'tt-item';
+        const color = getSubjectColorSafe(it.subject || '');
+        el.style.background = color;
+        el.style.color = getContrastColor ? getContrastColor(color) : '#fff';
+        const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
+        const lbl = document.createElement('div'); lbl.className='tt-label'; lbl.textContent = it.subject || 'Untitled'; left.appendChild(lbl);
+        const time = document.createElement('small'); time.textContent = `${it.startTime || ''} - ${it.endTime || ''}`; left.appendChild(time);
+        const actions = document.createElement('div'); actions.className='tt-actions';
+        const editBtn = document.createElement('button'); editBtn.className='tt-btn'; editBtn.title='Edit'; editBtn.innerHTML='✏️';
+        const delBtn = document.createElement('button'); delBtn.className='tt-btn'; delBtn.title='Delete'; delBtn.innerHTML='🗑️';
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+        el.appendChild(left); el.appendChild(actions);
+        // edit handler
+        editBtn.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          const newSub = prompt('Subject', it.subject) || it.subject;
+          const newStart = prompt('Start time (HH:MM)', it.startTime) || it.startTime;
+          const newEnd = prompt('End time (HH:MM)', it.endTime) || it.endTime;
+          it.subject = newSub; it.startTime = newStart; it.endTime = newEnd;
+          saveData(); renderTimetable();
+        });
+        delBtn.addEventListener('click',(e)=>{ e.stopPropagation(); if (confirm('Delete this entry?')) { timetableEntries = timetableEntries.filter(x=>x.id!==it.id); saveData(); renderTimetable(); } });
+        col.appendChild(el);
+      });
+    }
+    container.appendChild(col);
+  });
+}
+
+function addTimetableEntry() {
+  const subj = (document.getElementById('ttSubjectInput')||{}).value.trim();
+  const day = (document.getElementById('ttDaySelect')||{}).value;
+  const start = (document.getElementById('ttStartInput')||{}).value;
+  const end = (document.getElementById('ttEndInput')||{}).value;
+  if (!subj || !day) return alert('Please provide a subject and day.');
+  const entry = { id: Date.now()+Math.floor(Math.random()*999), subject: subj, day, startTime: start, endTime: end };
+  timetableEntries.push(entry); saveData(); renderTimetable();
+  if (window && window.showToast) window.showToast('Timetable entry added', 'success');
+  // clear inputs
+  (document.getElementById('ttSubjectInput')||{}).value='';
+}
+
+const ttAddBtnEl = document.getElementById('ttAddBtn');
+if (ttAddBtnEl) ttAddBtnEl.addEventListener('click', addTimetableEntry);
+
+function computeNextDate(dateStr, recurrence) {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (recurrence === 'daily') {
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  if (recurrence === 'weekly') {
+    d.setDate(d.getDate() + 7);
+    return d;
+  }
+  if (recurrence === 'monthly') {
+    const m = d.getMonth();
+    d.setMonth(m + 1);
+    return d;
+  }
+  return null;
+}
+
+function generateRecurringTasks() {
+  loadData(); // ensure templates are loaded
+  const now = new Date();
+  // for each template, find latest occurrence among tasks
+  recurringTemplates.forEach(tpl => {
+    if (!tpl.active) return;
+    // find existing occurrences
+    const occurrences = tasks.filter(tsk => tsk.masterId === tpl.id).map(x => x.occurrenceDate).filter(Boolean).sort();
+    let last = occurrences.length ? new Date(occurrences[occurrences.length-1]) : null;
+    if (!last) last = tpl.startDate ? new Date(tpl.startDate) : new Date();
+
+    // generate next occurrence if within next 30 days and not already present
+    const next = computeNextDate(last.toISOString(), tpl.recurrence);
+    if (!next) return;
+    const limit = new Date(); limit.setDate(limit.getDate() + 30);
+    if (next <= limit) {
+      const nextIso = next.toISOString().split('T')[0];
+      const exists = tasks.some(tt => tt.masterId === tpl.id && tt.occurrenceDate && tt.occurrenceDate.startsWith(nextIso));
+      if (!exists) {
+        // create instance
+        const inst = {
+          id: Date.now() + Math.floor(Math.random()*1000),
+          text: tpl.text,
+          category: tpl.category,
+          priority: tpl.priority,
+          completed: false,
+          createdAt: getFormattedDateTime(new Date()),
+          deadline: next.toISOString(),
+          penaltyApplied: false,
+          tags: [],
+          masterId: tpl.id,
+          occurrenceDate: next.toISOString(),
+          recurrence: tpl.recurrence
+        };
+        tasks.push(inst);
+      }
+    }
+  });
+  saveData();
+  renderTasks();
+}
+
+// ==========================
+// Lab Records (minimal)
+// ==========================
+let labRecords = [];
+
+function loadLabRecords() {
+  try { labRecords = JSON.parse(localStorage.getItem('lab_records') || '[]'); } catch(e){ labRecords = []; }
+}
+
+function saveLabRecords() {
+  localStorage.setItem('lab_records', JSON.stringify(labRecords));
+}
+
+function renderLabRecords() {
+  loadLabRecords();
+  const list = document.getElementById('labRecordsList');
+  const filter = document.getElementById('labSubjectFilter');
+  if (!list || !filter) return;
+
+  // populate filter options from current records
+  const subjects = Array.from(new Set(labRecords.map(r => r.subject).filter(Boolean)));
+  filter.innerHTML = '<option value="All">All</option>' + subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+
+  const selected = filter.value || 'All';
+  const toRender = labRecords.filter(r => selected === 'All' || r.subject === selected).sort((a,b)=> a.deadline ? (new Date(a.deadline)-new Date(b.deadline)) : 0);
+
+  list.innerHTML = '';
+  if (labRecords.length === 0) {
+    list.innerHTML = `<div style="color:var(--text-light);">No lab records yet. Add experiments above.</div>`;
+  }
+
+  labRecords.forEach(rec => {
+    if (selected !== 'All' && rec.subject !== selected) return;
+    const el = document.createElement('div');
+    el.className = 'lab-record-item';
+    const subjectColor = getSubjectColor(rec.subject);
+    const subjectText = getContrastColor(subjectColor);
+
+    const left = document.createElement('div');
+    left.className = 'lab-record-left';
+    left.innerHTML = `
+      <div style="display:flex;flex-direction:column;">
+        <strong style="font-size:14px;">${escapeHtml(rec.title)}</strong>
+        <div class="lab-record-meta">${escapeHtml(rec.subject || '—')} • ${rec.deadline ? new Date(rec.deadline).toLocaleString() : 'No deadline'}</div>
+      </div>
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'lab-record-actions';
+    const statusBtn = document.createElement('button');
+    statusBtn.className = 'view-btn small';
+    statusBtn.textContent = rec.submitted ? 'Submitted' : 'Pending';
+    statusBtn.addEventListener('click', () => {
+      toggleLabSubmission(rec.id);
+    });
+
+    const del = document.createElement('button');
+    del.className = 'view-btn small';
+    del.textContent = 'Delete';
+    del.addEventListener('click', () => { deleteLabRecord(rec.id); });
+
+    actions.appendChild(statusBtn);
+    actions.appendChild(del);
+
+    el.appendChild(left);
+    el.appendChild(actions);
+
+    list.appendChild(el);
+  });
+
+  // update progress
+  const total = labRecords.length;
+  const done = labRecords.filter(r=>r.submitted).length;
+  const pct = total === 0 ? 0 : Math.round((done/total)*100);
+  const fill = document.getElementById('labProgressFill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+function addLabRecord() {
+  const title = document.getElementById('labTitleInput').value.trim();
+  const subject = document.getElementById('labSubjectInput').value.trim() || 'General';
+  const deadline = document.getElementById('labDeadlineInput').value || null;
+  if (!title) { showTaskPopup('Please enter an experiment title'); return; }
+
+  const rec = { id: Date.now(), title, subject, deadline, submitted: false, createdAt: Date.now() };
+  labRecords.push(rec);
+  saveLabRecords();
+  renderLabRecords();
+  document.getElementById('labTitleInput').value = '';
+  document.getElementById('labSubjectInput').value = '';
+  document.getElementById('labDeadlineInput').value = '';
+  showTaskPopup('Lab record added');
+}
+
+function toggleLabSubmission(id) {
+  const rec = labRecords.find(r=>r.id===id);
+  if (!rec) return;
+  rec.submitted = !rec.submitted;
+  if (rec.submitted) rec.submittedAt = Date.now(); else rec.submittedAt = null;
+  saveLabRecords();
+  renderLabRecords();
+  showTaskPopup(rec.submitted ? 'Marked submitted' : 'Marked pending');
+}
+
+function deleteLabRecord(id) {
+  labRecords = labRecords.filter(r=>r.id!==id);
+  saveLabRecords();
+  renderLabRecords();
+  showTaskPopup('Lab record deleted');
+}
+
+// Wire lab controls
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadLabRecords();
+  const addBtn = document.getElementById('labAddBtn');
+  if (addBtn) addBtn.addEventListener('click', (e)=>{ e.preventDefault(); addLabRecord(); });
+  const filter = document.getElementById('labSubjectFilter');
+  if (filter) filter.addEventListener('change', renderLabRecords);
 });
 
 // ==========================================================================

@@ -313,6 +313,20 @@
                 <option value="Medium" selected>🟡 Medium</option>
                 <option value="Low">🟢 Low</option>
               </select>
+              <select id="recurrenceSelect" aria-label="Recurrence">
+                <option value="none">No Repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <input
+                type="text"
+                id="taskTagsInput"
+                placeholder="Tags (comma separated)"
+                list="taskTagSuggestionsList"
+                aria-label="Task tags"
+              />
+              <datalist id="taskTagSuggestionsList"></datalist>
               <input
                 type="text"
                 id="taskTagsInput"
@@ -746,7 +760,7 @@
           </div>
         </div>
 
-        <!-- Weekly Performance Summary -->
+            <!-- Weekly Performance Summary -->
         <div class="asgn-weekly-summary glass" id="weeklySummaryCard">
           <div class="asgn-form-header">
             <div class="asgn-form-title"><i class="ri-dashboard-line"></i> Weekly Performance Summary</div>
@@ -800,6 +814,41 @@
 
             </div>
           </div>
+        </div>
+        <!-- LAB RECORDS: minimal lab submission tracker -->
+        <div class="lab-records-card glass" id="labRecordsCard" style="margin-top:20px;">
+          <div class="vault-header">
+            <div class="vault-title-area">
+              <h2><i class="ri-flask-line"></i> Lab Records</h2>
+              <p>Track experiments, submission status, and deadlines.</p>
+            </div>
+          </div>
+
+          <div class="task-box" style="grid-template-columns: 1fr 160px 220px 120px; margin-top:12px;">
+            <input type="text" id="labTitleInput" placeholder="Experiment title (e.g. Titration Lab)" />
+            <input type="text" id="labSubjectInput" placeholder="Subject (e.g. Chemistry)" list="subjectSuggestions" />
+            <input type="datetime-local" id="labDeadlineInput" />
+            <button id="labAddBtn" class="view-btn">Add</button>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0; gap:12px;">
+            <div>
+              <label for="labSubjectFilter">Filter by subject:</label>
+              <select id="labSubjectFilter" style="margin-left:8px;">
+                <option value="All">All</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:13px;color:var(--text-light);">Progress:</div>
+              <div style="width:200px;">
+                <div class="lab-progress-bar" style="background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;height:12px;">
+                  <div id="labProgressFill" style="width:0%;height:100%;background:linear-gradient(90deg,#10b981,#06b6d4);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="labRecordsList" style="display:flex;flex-direction:column;gap:10px;margin-top:8px;"></div>
         </div>
 
 
@@ -2127,7 +2176,29 @@
   <button class="fixed-open-study-btn" id="openStudyTogetherFab" type="button">
     <i class="ri-team-line"></i> Open Study Together
   </button>
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
   <script src="script.js"></script>
+  <script src="toast.js"></script>
+  <!-- Minimal Timetable Manager -->
+  <section id="timetable-section" class="card" style="margin:16px;">
+    <h2 style="margin:0 0 8px 0;">Timetable</h2>
+    <div class="timetable-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <input id="ttSubjectInput" placeholder="Subject (e.g., Math)" style="flex:1;min-width:160px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);" />
+      <select id="ttDaySelect" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);">
+        <option value="mon">Mon</option>
+        <option value="tue">Tue</option>
+        <option value="wed">Wed</option>
+        <option value="thu">Thu</option>
+        <option value="fri">Fri</option>
+        <option value="sat">Sat</option>
+        <option value="sun">Sun</option>
+      </select>
+      <input id="ttStartInput" type="time" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);" />
+      <input id="ttEndInput" type="time" style="padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);" />
+      <button id="ttAddBtn" class="btn">Add</button>
+    </div>
+    <div id="timetableContainer" class="timetable-grid" aria-live="polite"></div>
+  </section>
   <script src="collaborative.js"></script>
 
 </body>
