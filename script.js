@@ -838,6 +838,110 @@ function initializeAnalyticsData() {
   saveData();
 }
 
+// Heatmap renderer: GitHub-style contribution grid showing daily study minutes
+function renderHeatmap(weeks = 15) {
+  const container = document.getElementById('heatmapContainer');
+  if (!container) return;
+  // Build date range starting (weeks * 7) days ago
+  const today = new Date();
+  const totalDays = weeks * 7;
+  const startDate = new Date();
+  startDate.setDate(today.getDate() - (totalDays - 1));
+
+  // Collect values for normalization
+  const valueByDate = {};
+  const dates = [];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    const k = getFormattedDate(d);
+    const mins = analyticsData.dailyStudyMinutes?.[k] || 0;
+    const tasksDone = analyticsData.completedTasksPerDay?.[k] || 0;
+    // Prefer minutes, otherwise fallback to tasksDone*20 for visible signal
+    const value = mins || (tasksDone ? tasksDone * 20 : 0);
+    valueByDate[k] = { date: new Date(d), value, mins, tasksDone };
+    dates.push(k);
+  }
+
+  const maxVal = Math.max(1, ...dates.map(k => valueByDate[k].value));
+
+  // Clear container
+  container.innerHTML = '';
+
+  // Create weeks columns (each column contains 7 day boxes)
+  for (let w = 0; w < weeks; w++) {
+    const weekDiv = document.createElement('div');
+    weekDiv.className = 'heatmap-week';
+
+    for (let d = 0; d < 7; d++) {
+      const index = w * 7 + d;
+      const key = dates[index];
+      const meta = valueByDate[key] || { date: null, value: 0, mins: 0, tasksDone: 0 };
+      const level = Math.min(4, Math.floor((meta.value / maxVal) * 4));
+
+      const dayEl = document.createElement('div');
+      dayEl.className = `heatmap-day level-${level}`;
+      dayEl.setAttribute('data-date', key || '');
+      dayEl.setAttribute('data-mins', meta.mins || 0);
+      dayEl.setAttribute('data-tasks', meta.tasksDone || 0);
+
+      // Tooltip handling
+      dayEl.addEventListener('mouseenter', (ev) => showHeatmapTooltip(ev, meta));
+      dayEl.addEventListener('mousemove', (ev) => moveHeatmapTooltip(ev));
+      dayEl.addEventListener('mouseleave', hideHeatmapTooltip);
+
+      weekDiv.appendChild(dayEl);
+    }
+
+    container.appendChild(weekDiv);
+  }
+}
+
+function formatHeatmapDate(date) {
+  if (!date) return '';
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// Tooltip element (singleton)
+let _heatmapTooltipEl = null;
+function ensureHeatmapTooltip() {
+  if (!_heatmapTooltipEl) {
+    _heatmapTooltipEl = document.createElement('div');
+    _heatmapTooltipEl.className = 'heatmap-tooltip';
+    _heatmapTooltipEl.style.display = 'none';
+    document.body.appendChild(_heatmapTooltipEl);
+  }
+  return _heatmapTooltipEl;
+}
+
+function showHeatmapTooltip(ev, meta) {
+  const el = ensureHeatmapTooltip();
+  const dateStr = meta.date ? formatHeatmapDate(meta.date) : ev.target.dataset.date;
+  const mins = meta.mins || parseInt(ev.target.dataset.mins || 0, 10);
+  const tasks = meta.tasksDone || parseInt(ev.target.dataset.tasks || 0, 10);
+  el.innerHTML = `<strong>${dateStr}</strong><div style="margin-top:6px">Study: <strong>${mins} min</strong><br/>Tasks: <strong>${tasks}</strong></div>`;
+  el.style.display = 'block';
+  positionHeatmapTooltip(ev);
+}
+
+function moveHeatmapTooltip(ev) {
+  positionHeatmapTooltip(ev);
+}
+
+function positionHeatmapTooltip(ev) {
+  const el = ensureHeatmapTooltip();
+  const padding = 12;
+  const x = ev.clientX + padding;
+  const y = ev.clientY + padding;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+}
+
+function hideHeatmapTooltip() {
+  const el = ensureHeatmapTooltip();
+  el.style.display = 'none';
+}
+
 function getFormattedDate(date) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -2795,6 +2899,7 @@ function updateAnalyticsDashboard() {
   renderCalendar();
   renderProfile();
   renderSubjectTracker();
+  renderHeatmap(15);
 
   // Close panel if clicking outside
   document.addEventListener('click', (e) => {
