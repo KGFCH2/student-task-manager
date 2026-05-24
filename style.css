@@ -1311,6 +1311,21 @@ body.light .topbar-left h2 {
 
 .lab-progress-bar { border-radius: 8px; overflow: hidden; height: 10px; background: rgba(255,255,255,0.04); }
 
+/* Recurrence pill shown on task cards */
+.recurrence-pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  background: rgba(59,130,246,0.9);
+}
+
+.recurrence-pill[data-type="daily"] { background: linear-gradient(90deg,#10b981,#06b6d4); }
+.recurrence-pill[data-type="weekly"] { background: linear-gradient(90deg,#f59e0b,#f97316); }
+.recurrence-pill[data-type="monthly"] { background: linear-gradient(90deg,#8b5cf6,#3b82f6); }
+
 /* DAILY QUEST */
 
 .daily-quest {

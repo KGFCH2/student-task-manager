@@ -362,6 +362,7 @@ let tasks = [];
 let exams = [];
 let vaultFiles = [];
 let projects = [];
+let recurringTemplates = [];
 let currentFilter = "All";
 let currentSort = "default";
 let searchQuery = "";
@@ -662,6 +663,12 @@ function loadData() {
       calendarEvents = [];
     }
   }
+
+  // Load recurring templates
+  try {
+    const raw = localStorage.getItem('recurring_templates');
+    recurringTemplates = raw ? JSON.parse(raw) : [];
+  } catch (e) { recurringTemplates = []; }
 }
 
 function saveData() {
@@ -678,6 +685,8 @@ function saveData() {
   localStorage.setItem("quests_timetable", JSON.stringify(timetable));
   localStorage.setItem("quests_subjects", JSON.stringify(subjects));
   localStorage.setItem("quests_calendar", JSON.stringify(calendarEvents));
+  // persist recurring templates
+  try { localStorage.setItem('recurring_templates', JSON.stringify(recurringTemplates || [])); } catch(e){}
 }
 
 // ==========================
@@ -1352,6 +1361,8 @@ function addTask() {
 
   const deadlineInput = document.getElementById("deadlineInput");
   const deadline = deadlineInput ? deadlineInput.value : "";
+  const recurrenceSelect = document.getElementById('recurrenceSelect');
+  const recurrence = recurrenceSelect ? (recurrenceSelect.value || 'none') : 'none';
 
   if (text === "") {
     taskInput.classList.add("input-invalid");
@@ -1376,6 +1387,23 @@ function addTask() {
     penaltyApplied: false,
     tags
   };
+
+  // attach recurrence metadata
+  if (recurrence && recurrence !== 'none') {
+    task.recurrence = recurrence;
+    // create a recurring template to auto-generate future instances
+    const template = {
+      id: `rt-${Date.now()}`,
+      text,
+      category,
+      priority,
+      recurrence,
+      active: true,
+      startDate: deadline || new Date().toISOString()
+    };
+    recurringTemplates.push(template);
+    task.masterId = template.id;
+  }
 
   tasks.push(task);
   taskInput.value = "";
@@ -1433,6 +1461,7 @@ function createTaskEl(task) {
         <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
           <p class="task-category" style="margin: 0;"><span class="subject-pill" style="background: ${subjectColor}; color: ${subjectTextColor};">${catEmoji} ${escapeHtml(task.category)}</span></p>
           <span class="priority-pill priority-${pri.toLowerCase()}">${pri}</span>
+          ${task.recurrence && task.recurrence !== 'none' ? `<span class="recurrence-pill" data-type="${escapeHtml(task.recurrence)}" title="Recurring: ${escapeHtml(task.recurrence)}">${escapeHtml(task.recurrence)}</span>` : ''}
           <span class="task-timestamp" style="font-size: 11px; color: var(--text-light); opacity: 0.8;"><i class="ri-history-line"></i> ${task.createdAt}</span>
         </div>
         ${tags.length ? `<div class="task-tags">${tags.map(tag => `<span class="task-tag" style="--tag-color: ${getTagColor(tag)};"><i class="ri-price-tag-3-line"></i>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
@@ -1519,6 +1548,37 @@ function createTaskEl(task) {
     renderTasks();
     announce(`Task deleted: "${task.text}"`);
   });
+
+  // recurrence pill click -> edit/stop recurring if this task belongs to a template
+  const recEl = div.querySelector('.recurrence-pill');
+  if (recEl) {
+    recEl.style.cursor = 'pointer';
+    recEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const masterId = task.masterId;
+      if (!masterId) return alert('No recurring template found');
+      const tpl = recurringTemplates.find(t => t.id === masterId);
+      if (!tpl) return alert('Recurring template missing');
+      const choice = prompt('Edit recurrence (none/daily/weekly/monthly) or type REMOVE to stop recurring:', tpl.recurrence || 'daily');
+      if (!choice) return;
+      const val = choice.trim().toLowerCase();
+      if (val === 'remove' || val === 'none') {
+        // remove template
+        recurringTemplates = recurringTemplates.filter(t => t.id !== masterId);
+        // clear recurrence flag from existing tasks
+        tasks.forEach(t => { if (t.masterId === masterId) { delete t.recurrence; delete t.masterId; } });
+        saveData();
+        if (window && window.showToast) window.showToast('Recurring schedule removed', 'info');
+      } else if (['daily','weekly','monthly'].includes(val)) {
+        tpl.recurrence = val;
+        saveData();
+        if (window && window.showToast) window.showToast('Recurrence updated', 'success');
+      } else {
+        if (window && window.showToast) window.showToast('No changes made', 'info');
+      }
+      renderTasks();
+    });
+  }
 
   // Edit task event
   div.querySelector(".edit-btn").addEventListener("click", () => {
@@ -3983,7 +4043,69 @@ window.addEventListener('load', () => {
   renderVault();
   renderProjects();
   renderLabRecords && renderLabRecords();
+  // generate recurring tasks on load
+  generateRecurringTasks();
 });
+
+function computeNextDate(dateStr, recurrence) {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  if (recurrence === 'daily') {
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  if (recurrence === 'weekly') {
+    d.setDate(d.getDate() + 7);
+    return d;
+  }
+  if (recurrence === 'monthly') {
+    const m = d.getMonth();
+    d.setMonth(m + 1);
+    return d;
+  }
+  return null;
+}
+
+function generateRecurringTasks() {
+  loadData(); // ensure templates are loaded
+  const now = new Date();
+  // for each template, find latest occurrence among tasks
+  recurringTemplates.forEach(tpl => {
+    if (!tpl.active) return;
+    // find existing occurrences
+    const occurrences = tasks.filter(tsk => tsk.masterId === tpl.id).map(x => x.occurrenceDate).filter(Boolean).sort();
+    let last = occurrences.length ? new Date(occurrences[occurrences.length-1]) : null;
+    if (!last) last = tpl.startDate ? new Date(tpl.startDate) : new Date();
+
+    // generate next occurrence if within next 30 days and not already present
+    const next = computeNextDate(last.toISOString(), tpl.recurrence);
+    if (!next) return;
+    const limit = new Date(); limit.setDate(limit.getDate() + 30);
+    if (next <= limit) {
+      const nextIso = next.toISOString().split('T')[0];
+      const exists = tasks.some(tt => tt.masterId === tpl.id && tt.occurrenceDate && tt.occurrenceDate.startsWith(nextIso));
+      if (!exists) {
+        // create instance
+        const inst = {
+          id: Date.now() + Math.floor(Math.random()*1000),
+          text: tpl.text,
+          category: tpl.category,
+          priority: tpl.priority,
+          completed: false,
+          createdAt: getFormattedDateTime(new Date()),
+          deadline: next.toISOString(),
+          penaltyApplied: false,
+          tags: [],
+          masterId: tpl.id,
+          occurrenceDate: next.toISOString(),
+          recurrence: tpl.recurrence
+        };
+        tasks.push(inst);
+      }
+    }
+  });
+  saveData();
+  renderTasks();
+}
 
 // ==========================
 // Lab Records (minimal)
