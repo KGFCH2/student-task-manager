@@ -12,7 +12,7 @@
   <header class="site-header">
     <h1>📚 Study Task Tracker</h1>
     
-    <select id="themeSwitcher" class="theme-dropdown">
+    <select id="themeSwitcher" class="theme-dropdown" aria-label="Select color theme">
       <option value="light">🌞 Light</option>
       <option value="dark">🌙 Dark</option>
       <option value="blue">🩵 Blue</option>
@@ -23,9 +23,17 @@
   <main id="main-content" class="container">
     <form id="taskForm" onsubmit="event.preventDefault(); addTask();">
       <label for="taskInput">Task description</label>
-      <input type="text" id="taskInput" placeholder="Enter task" aria-describedby="taskHelp">
-      <button type="submit">Add</button>
-      <p id="taskHelp" class="sr-only">Enter a task and press Add to track your study items.</p>
+      <input type="text" id="taskInput" placeholder="Enter task" aria-describedby="taskHelp" required>
+
+      <label for="prioritySelect">Priority</label>
+      <select id="prioritySelect" class="priority-select" aria-label="Select task priority">
+        <option value="low">🟢 Low</option>
+        <option value="medium" selected>🟡 Medium</option>
+        <option value="high">🔴 High</option>
+      </select>
+
+      <button type="submit">Add Task</button>
+      <p id="taskHelp" class="sr-only">Enter a task description, choose a priority level, and press Add Task to track your study items.</p>
     </form>
 
     <p id="errorMsg" class="error" role="alert"></p>
@@ -34,7 +42,7 @@
     <p id="taskStats"></p>
 
     <div id="celebration" class="celebration hidden">
-    <img src="task completed image.jpg" alt="Celebration" />
+    <img src="task completed image.jpg" alt="Celebration banner showing all tasks are done" />
     <p>All tasks completed! 🎉</p>
   </div>
 
