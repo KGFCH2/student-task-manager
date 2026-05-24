@@ -722,6 +722,20 @@ body.light .topbar-left h2 {
   font-size: 18px;
 }
 
+.sound-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.sound-toggle.muted {
+  opacity: 0.55;
+  filter: grayscale(50%);
+}
+
 .theme-selector-panel {
   display: flex;
   gap: 10px;
