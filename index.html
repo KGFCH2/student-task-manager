@@ -746,7 +746,7 @@
           </div>
         </div>
 
-        <!-- Weekly Performance Summary -->
+            <!-- Weekly Performance Summary -->
         <div class="asgn-weekly-summary glass" id="weeklySummaryCard">
           <div class="asgn-form-header">
             <div class="asgn-form-title"><i class="ri-dashboard-line"></i> Weekly Performance Summary</div>
@@ -800,6 +800,41 @@
 
             </div>
           </div>
+        </div>
+        <!-- LAB RECORDS: minimal lab submission tracker -->
+        <div class="lab-records-card glass" id="labRecordsCard" style="margin-top:20px;">
+          <div class="vault-header">
+            <div class="vault-title-area">
+              <h2><i class="ri-flask-line"></i> Lab Records</h2>
+              <p>Track experiments, submission status, and deadlines.</p>
+            </div>
+          </div>
+
+          <div class="task-box" style="grid-template-columns: 1fr 160px 220px 120px; margin-top:12px;">
+            <input type="text" id="labTitleInput" placeholder="Experiment title (e.g. Titration Lab)" />
+            <input type="text" id="labSubjectInput" placeholder="Subject (e.g. Chemistry)" list="subjectSuggestions" />
+            <input type="datetime-local" id="labDeadlineInput" />
+            <button id="labAddBtn" class="view-btn">Add</button>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0; gap:12px;">
+            <div>
+              <label for="labSubjectFilter">Filter by subject:</label>
+              <select id="labSubjectFilter" style="margin-left:8px;">
+                <option value="All">All</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="font-size:13px;color:var(--text-light);">Progress:</div>
+              <div style="width:200px;">
+                <div class="lab-progress-bar" style="background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;height:12px;">
+                  <div id="labProgressFill" style="width:0%;height:100%;background:linear-gradient(90deg,#10b981,#06b6d4);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="labRecordsList" style="display:flex;flex-direction:column;gap:10px;margin-top:8px;"></div>
         </div>
 
 

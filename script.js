@@ -3982,6 +3982,127 @@ window.addEventListener('load', () => {
   renderExams();
   renderVault();
   renderProjects();
+  renderLabRecords && renderLabRecords();
+});
+
+// ==========================
+// Lab Records (minimal)
+// ==========================
+let labRecords = [];
+
+function loadLabRecords() {
+  try { labRecords = JSON.parse(localStorage.getItem('lab_records') || '[]'); } catch(e){ labRecords = []; }
+}
+
+function saveLabRecords() {
+  localStorage.setItem('lab_records', JSON.stringify(labRecords));
+}
+
+function renderLabRecords() {
+  loadLabRecords();
+  const list = document.getElementById('labRecordsList');
+  const filter = document.getElementById('labSubjectFilter');
+  if (!list || !filter) return;
+
+  // populate filter options from current records
+  const subjects = Array.from(new Set(labRecords.map(r => r.subject).filter(Boolean)));
+  filter.innerHTML = '<option value="All">All</option>' + subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+
+  const selected = filter.value || 'All';
+  const toRender = labRecords.filter(r => selected === 'All' || r.subject === selected).sort((a,b)=> a.deadline ? (new Date(a.deadline)-new Date(b.deadline)) : 0);
+
+  list.innerHTML = '';
+  if (labRecords.length === 0) {
+    list.innerHTML = `<div style="color:var(--text-light);">No lab records yet. Add experiments above.</div>`;
+  }
+
+  labRecords.forEach(rec => {
+    if (selected !== 'All' && rec.subject !== selected) return;
+    const el = document.createElement('div');
+    el.className = 'lab-record-item';
+    const subjectColor = getSubjectColor(rec.subject);
+    const subjectText = getContrastColor(subjectColor);
+
+    const left = document.createElement('div');
+    left.className = 'lab-record-left';
+    left.innerHTML = `
+      <div style="display:flex;flex-direction:column;">
+        <strong style="font-size:14px;">${escapeHtml(rec.title)}</strong>
+        <div class="lab-record-meta">${escapeHtml(rec.subject || '—')} • ${rec.deadline ? new Date(rec.deadline).toLocaleString() : 'No deadline'}</div>
+      </div>
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'lab-record-actions';
+    const statusBtn = document.createElement('button');
+    statusBtn.className = 'view-btn small';
+    statusBtn.textContent = rec.submitted ? 'Submitted' : 'Pending';
+    statusBtn.addEventListener('click', () => {
+      toggleLabSubmission(rec.id);
+    });
+
+    const del = document.createElement('button');
+    del.className = 'view-btn small';
+    del.textContent = 'Delete';
+    del.addEventListener('click', () => { deleteLabRecord(rec.id); });
+
+    actions.appendChild(statusBtn);
+    actions.appendChild(del);
+
+    el.appendChild(left);
+    el.appendChild(actions);
+
+    list.appendChild(el);
+  });
+
+  // update progress
+  const total = labRecords.length;
+  const done = labRecords.filter(r=>r.submitted).length;
+  const pct = total === 0 ? 0 : Math.round((done/total)*100);
+  const fill = document.getElementById('labProgressFill');
+  if (fill) fill.style.width = pct + '%';
+}
+
+function addLabRecord() {
+  const title = document.getElementById('labTitleInput').value.trim();
+  const subject = document.getElementById('labSubjectInput').value.trim() || 'General';
+  const deadline = document.getElementById('labDeadlineInput').value || null;
+  if (!title) { showTaskPopup('Please enter an experiment title'); return; }
+
+  const rec = { id: Date.now(), title, subject, deadline, submitted: false, createdAt: Date.now() };
+  labRecords.push(rec);
+  saveLabRecords();
+  renderLabRecords();
+  document.getElementById('labTitleInput').value = '';
+  document.getElementById('labSubjectInput').value = '';
+  document.getElementById('labDeadlineInput').value = '';
+  showTaskPopup('Lab record added');
+}
+
+function toggleLabSubmission(id) {
+  const rec = labRecords.find(r=>r.id===id);
+  if (!rec) return;
+  rec.submitted = !rec.submitted;
+  if (rec.submitted) rec.submittedAt = Date.now(); else rec.submittedAt = null;
+  saveLabRecords();
+  renderLabRecords();
+  showTaskPopup(rec.submitted ? 'Marked submitted' : 'Marked pending');
+}
+
+function deleteLabRecord(id) {
+  labRecords = labRecords.filter(r=>r.id!==id);
+  saveLabRecords();
+  renderLabRecords();
+  showTaskPopup('Lab record deleted');
+}
+
+// Wire lab controls
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadLabRecords();
+  const addBtn = document.getElementById('labAddBtn');
+  if (addBtn) addBtn.addEventListener('click', (e)=>{ e.preventDefault(); addLabRecord(); });
+  const filter = document.getElementById('labSubjectFilter');
+  if (filter) filter.addEventListener('change', renderLabRecords);
 });
 
 // ==========================================================================

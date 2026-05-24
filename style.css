@@ -1286,6 +1286,31 @@ body.light .topbar-left h2 {
   box-shadow: 0 8px 20px rgba(0,0,0,0.18);
 }
 
+/* Lab records card */
+.lab-records-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.lab-record-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.02);
+}
+
+.lab-record-left { display:flex; gap:12px; align-items:center; }
+.lab-record-meta { color: var(--text-light); font-size: 13px; }
+.lab-record-actions button { margin-left:8px; }
+
+.lab-progress-bar { border-radius: 8px; overflow: hidden; height: 10px; background: rgba(255,255,255,0.04); }
+
 /* DAILY QUEST */
 
 .daily-quest {
