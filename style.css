@@ -4056,6 +4056,10 @@ body.light .modal-progress-bar {
   transition: var(--transition);
 }
 
+.view-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .view-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
