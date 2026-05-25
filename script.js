@@ -81,6 +81,8 @@ function saveAndRender() {
     localStorage.setItem("taskquest_v1.tasks", JSON.stringify(tasks));
   }
   renderTasks();
+  // Notify other modules (badges, analytics) that tasks changed
+  try { document.dispatchEvent(new CustomEvent('tasksUpdated')); } catch (e) {}
 }
 
 function renderTasks() {
