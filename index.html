@@ -2070,10 +2070,25 @@
     <i class="ri-team-line"></i> Open Study Together
   </button>
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <!-- Floating Action Button (Quick Add Task) -->
+  <button id="fabAddTask" class="fab" aria-label="Add task" title="Add Task">+</button>
+
+  <div id="fabModal" class="fab-modal" aria-hidden="true">
+    <div class="fab-backdrop" id="fabBackdrop"></div>
+    <div class="fab-sheet" role="dialog" aria-modal="true" aria-labelledby="fabTitle">
+      <h3 id="fabTitle">Quick Add Task</h3>
+      <input id="fabTaskInput" type="text" placeholder="Enter task..." />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <button id="fabCancel" class="view-btn small">Cancel</button>
+        <button id="fabSubmit" class="view-btn small primary">Add</button>
+      </div>
+    </div>
+  </div>
   <script src="script.js"></script>
   <script src="toast.js"></script>
   <script src="badges.js"></script>
   <script src="sidebar-toggle.js"></script>
+  <script src="fab.js"></script>
   <!-- Minimal Timetable Manager -->
   <section id="timetable-section" class="card" style="margin:16px;">
     <h2 style="margin:0 0 8px 0;">Timetable</h2>
