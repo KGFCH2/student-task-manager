@@ -75,6 +75,8 @@ function editTask(id) {
 function saveAndRender() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
   renderTasks();
+  // Notify other modules (badges, analytics) that tasks changed
+  try { document.dispatchEvent(new CustomEvent('tasksUpdated')); } catch (e) {}
 }
 
 function renderTasks() {
