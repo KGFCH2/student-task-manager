@@ -5020,3 +5020,7 @@ function renderVault() {
 }
 
 
+
+/* Search Filter Logic */
+const taskSearchInput = document.getElementById('taskSearchInput');
+if(taskSearchInput){ taskSearchInput.addEventListener('input', (e) => { const query = e.target.value.toLowerCase(); const taskItems = document.querySelectorAll('#taskList li'); taskItems.forEach(item => { const text = item.innerText.toLowerCase(); item.style.display = text.includes(query) ? '' : 'none'; }); }); }
