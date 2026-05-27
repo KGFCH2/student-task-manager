@@ -979,3 +979,12 @@ const syncStatus = {
     this.lastSyncTimestamp = Date.now();
   }
 };
+
+const syncStatus = {
+  isConnected: false,
+  lastSyncTimestamp: Date.now(),
+  updateStatus(status) {
+    this.isConnected = status;
+    this.lastSyncTimestamp = Date.now();
+  }
+};
