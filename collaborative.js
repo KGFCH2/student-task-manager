@@ -14,19 +14,35 @@ let collaborativeState = {
 // Load collaborative data on init
 function loadCollaborativeData() {
   try {
-    const saved = localStorage.getItem('collab_state');
-    if (saved) {
-      collaborativeState = JSON.parse(saved);
+    const raw = window.TaskQuestStorage
+      ? window.TaskQuestStorage.getCollab()
+      : JSON.parse(localStorage.getItem('taskquest_v1.collab'));
+    if (raw && typeof raw === 'object') {
+      // Merge into the default state so any keys added in future schema
+      // versions are always present, preventing TypeError on missing keys.
+      collaborativeState = Object.assign({}, collaborativeState, raw);
+
+      // Guarantee every array field is actually an array even if the stored
+      // value was written before that field existed or was corrupted.
+      if (!Array.isArray(collaborativeState.friends))        collaborativeState.friends = [];
+      if (!Array.isArray(collaborativeState.challenges))     collaborativeState.challenges = [];
+      if (!Array.isArray(collaborativeState.sessionHistory)) collaborativeState.sessionHistory = [];
+      if (!Array.isArray(collaborativeState.joinedChallenges)) collaborativeState.joinedChallenges = [];
     }
   } catch (e) {
     console.error('Failed to load collaborative data:', e);
+    // Leave collaborativeState as the safe default defined above.
   }
 }
 
 // Save collaborative data
 function saveCollaborativeData() {
   try {
-    localStorage.setItem('collab_state', JSON.stringify(collaborativeState));
+    if (window.TaskQuestStorage) {
+      window.TaskQuestStorage.setCollab(collaborativeState);
+    } else {
+      localStorage.setItem('taskquest_v1.collab', JSON.stringify(collaborativeState));
+    }
   } catch (e) {
     console.error('Failed to save collaborative data:', e);
   }
