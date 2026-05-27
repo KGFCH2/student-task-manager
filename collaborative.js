@@ -48,14 +48,22 @@ function getGlobalStatsFor(name) {
 // COLLABORATIVE STATE & SESSION SECURITY CONSTANTS
 // ==========================================================================
 
-// Maximum allowed session duration: 12 hours (720 minutes).
-// Any session exceeding this is capped to prevent inflated productivity scores.
-const MAX_SESSION_DURATION_MINUTES = 720;
-const MAX_SESSION_DURATION_MS = MAX_SESSION_DURATION_MINUTES * 60 * 1000;
+// Sanitize user-supplied strings before injecting into innerHTML.
+// escapeHTML (capital H) is defined privately inside toast.js and is not
+// accessible here. escapeHtml (lowercase h) was called throughout this file
+// but never defined anywhere, causing a ReferenceError that crashed every
+// render function (renderFriendsList, renderChallenges, renderLeaderboard,
+// startCollabSession) and made the entire Study Together tab non-functional.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-// Heartbeat interval: verify active participation every 60 seconds
-const SESSION_HEARTBEAT_INTERVAL_MS = 60 * 1000;
-
+// Global collaborative state
 let collaborativeState = {
   friends: [],
   challenges: [],
