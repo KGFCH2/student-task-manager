@@ -7692,3 +7692,9 @@ body.light .drag-handle:hover {
   align-items: center;
   gap: 8px;
 }
+
+/* Dark mode variables foundation */
+:root[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #f5f5f5;
+}
