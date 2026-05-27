@@ -41,6 +41,29 @@ function getGlobalStatsFor(name) {
     if (index !== -1) {
         const p = sorted[index];
         return { ...p, rank: index + 1, level: Math.floor(p.score / 300) + 1 };
+    }
+    return null;
+}
+
+// ==========================================================================
+// COLLABORATIVE STATE & SESSION SECURITY CONSTANTS
+// ==========================================================================
+
+// Maximum allowed session duration: 12 hours (720 minutes).
+// Any session exceeding this is capped to prevent inflated productivity scores.
+const MAX_SESSION_DURATION_MINUTES = 720;
+const MAX_SESSION_DURATION_MS = MAX_SESSION_DURATION_MINUTES * 60 * 1000;
+
+// Heartbeat interval: verify active participation every 60 seconds
+const SESSION_HEARTBEAT_INTERVAL_MS = 60 * 1000;
+
+let collaborativeState = {
+  friends: [],
+  challenges: [],
+  joinedChallenges: [],
+  currentSession: null,
+  sessionHistory: []
+};
 
 // Load collaborative data on init
 function loadCollaborativeData() {
@@ -49,10 +72,20 @@ function loadCollaborativeData() {
       ? window.TaskQuestStorage.getCollab()
       : JSON.parse(localStorage.getItem('taskquest_v1.collab'));
     if (saved) {
-      collaborativeState = saved;
-
+      collaborativeState = { ...collaborativeState, ...saved };
+      // Auto-expire any stale session that exceeded max duration on page load
+      if (collaborativeState.currentSession) {
+        const elapsed = Date.now() - collaborativeState.currentSession.startTime;
+        if (elapsed > MAX_SESSION_DURATION_MS) {
+          console.warn('Stale session detected on load — auto-expiring.');
+          collaborativeState.currentSession = null;
+          saveCollaborativeData();
+        }
+      }
     }
-    return null;
+  } catch (e) {
+    console.error('Failed to load collaborative data:', e);
+  }
 }
 
 
@@ -565,3 +598,367 @@ window.removeMember = (id) => {
     saveTeamMembers();
     renderTeamMembers(memberSearchInput.value.trim());
 };
+
+// ==========================================================================
+// COLLABORATIVE STUDY SESSION MANAGEMENT (with duration cap & heartbeat)
+// ==========================================================================
+
+let _sessionHeartbeatTimer = null;
+let _sessionDurationTimer = null;
+
+/**
+ * Start a collaborative study session with a chosen partner.
+ * Records the start time and begins the heartbeat monitor.
+ */
+function selectSessionPartner(friendId, friendName) {
+  // Close any open modal
+  const modal = document.querySelector('.modal-overlay');
+  if (modal) modal.remove();
+
+  collaborativeState.currentSession = {
+    partnerId: friendId,
+    partnerName: friendName,
+    startTime: Date.now(),
+    lastHeartbeat: Date.now()
+  };
+  saveCollaborativeData();
+
+  // Update UI
+  updateCollabSessionUI();
+  startSessionHeartbeat();
+
+  showTaskPopup(`Study session started with ${escapeHtml(friendName)}!`);
+}
+
+/**
+ * Alias: invite a friend to study (starts session with them).
+ */
+function inviteFriendToSession(friendId, friendName) {
+  selectSessionPartner(friendId, friendName);
+}
+
+/**
+ * End the current collaborative study session.
+ * SECURITY: Caps the reported duration at MAX_SESSION_DURATION_MINUTES
+ * to prevent inflated scores from stale or manipulated sessions.
+ */
+function endCollabSession() {
+  if (!collaborativeState.currentSession) {
+    showTaskPopup('No active session to end.');
+    return;
+  }
+
+  const session = collaborativeState.currentSession;
+  const rawDurationMs = Date.now() - session.startTime;
+  const rawMinutes = Math.round(rawDurationMs / 60000);
+
+  // ── DURATION CAP: enforce maximum logical session duration ──
+  const cappedMinutes = Math.min(rawMinutes, MAX_SESSION_DURATION_MINUTES);
+  const wasCapped = rawMinutes > MAX_SESSION_DURATION_MINUTES;
+
+  if (wasCapped) {
+    console.warn(
+      `Session duration ${rawMinutes}m exceeded cap. ` +
+      `Clamped to ${MAX_SESSION_DURATION_MINUTES}m.`
+    );
+  }
+
+  // Record to session history
+  const record = {
+    id: Date.now(),
+    partnerName: session.partnerName,
+    partnerId: session.partnerId,
+    startTime: session.startTime,
+    endTime: Date.now(),
+    durationMinutes: cappedMinutes,
+    wasCapped: wasCapped
+  };
+  if (!collaborativeState.sessionHistory) {
+    collaborativeState.sessionHistory = [];
+  }
+  collaborativeState.sessionHistory.push(record);
+
+  // Update the partner's study minutes on the friends list
+  const friend = collaborativeState.friends.find(f => f.id === session.partnerId);
+  if (friend) {
+    friend.studyMinutes = (friend.studyMinutes || 0) + cappedMinutes;
+  }
+
+  // Clear the active session
+  collaborativeState.currentSession = null;
+  saveCollaborativeData();
+
+  // Stop heartbeat
+  stopSessionHeartbeat();
+
+  // Update UI
+  updateCollabSessionUI();
+  renderFriendsList();
+
+  const capNotice = wasCapped
+    ? ` (capped from ${rawMinutes}m)`
+    : '';
+  showTaskPopup(
+    `Session ended! ${cappedMinutes} minutes logged${capNotice}.`
+  );
+}
+
+/**
+ * Update the "Study Together Now" UI panel to reflect session state.
+ */
+function updateCollabSessionUI() {
+  const userEl = document.getElementById('collabSessionUser');
+  const partnerEl = document.getElementById('collabSessionPartner');
+  const durationEl = document.getElementById('collabSessionDuration');
+  const startBtn = document.getElementById('startCollabSessionBtn');
+  const stopBtn = document.getElementById('stopCollabSessionBtn');
+
+  if (!collaborativeState.currentSession) {
+    if (userEl) userEl.textContent = 'Not in session';
+    if (partnerEl) partnerEl.textContent = '—';
+    if (durationEl) durationEl.textContent = '0 min';
+    if (startBtn) startBtn.style.display = '';
+    if (stopBtn) stopBtn.style.display = 'none';
+    return;
+  }
+
+  const session = collaborativeState.currentSession;
+  const elapsed = Math.round((Date.now() - session.startTime) / 60000);
+  const displayMin = Math.min(elapsed, MAX_SESSION_DURATION_MINUTES);
+
+  if (userEl) userEl.textContent = myProfile.name || 'You';
+  if (partnerEl) partnerEl.textContent = session.partnerName || '—';
+  if (durationEl) durationEl.textContent = `${displayMin} min`;
+  if (startBtn) startBtn.style.display = 'none';
+  if (stopBtn) stopBtn.style.display = '';
+}
+
+/**
+ * Heartbeat: periodically verify the session is still valid.
+ * Auto-ends sessions that exceed MAX_SESSION_DURATION_MS.
+ * Also keeps lastHeartbeat fresh to prove active participation.
+ */
+function startSessionHeartbeat() {
+  stopSessionHeartbeat(); // clear any existing timer
+
+  _sessionHeartbeatTimer = setInterval(() => {
+    if (!collaborativeState.currentSession) {
+      stopSessionHeartbeat();
+      return;
+    }
+
+    // Record heartbeat timestamp
+    collaborativeState.currentSession.lastHeartbeat = Date.now();
+    saveCollaborativeData();
+
+    // Check if session exceeded max duration
+    const elapsed = Date.now() - collaborativeState.currentSession.startTime;
+    if (elapsed > MAX_SESSION_DURATION_MS) {
+      console.warn('Session exceeded maximum duration — auto-ending.');
+      endCollabSession();
+      return;
+    }
+
+    // Refresh the duration display
+    updateCollabSessionUI();
+  }, SESSION_HEARTBEAT_INTERVAL_MS);
+
+  // Also update the UI every second for a live counter
+  _sessionDurationTimer = setInterval(() => {
+    if (!collaborativeState.currentSession) {
+      clearInterval(_sessionDurationTimer);
+      _sessionDurationTimer = null;
+      return;
+    }
+    const durationEl = document.getElementById('collabSessionDuration');
+    if (durationEl) {
+      const elapsed = Math.round(
+        (Date.now() - collaborativeState.currentSession.startTime) / 60000
+      );
+      const displayMin = Math.min(elapsed, MAX_SESSION_DURATION_MINUTES);
+      durationEl.textContent = `${displayMin} min`;
+    }
+  }, 1000);
+}
+
+function stopSessionHeartbeat() {
+  if (_sessionHeartbeatTimer) {
+    clearInterval(_sessionHeartbeatTimer);
+    _sessionHeartbeatTimer = null;
+  }
+  if (_sessionDurationTimer) {
+    clearInterval(_sessionDurationTimer);
+    _sessionDurationTimer = null;
+  }
+}
+
+// ==========================================================================
+// FRIEND & CHALLENGE MANAGEMENT
+// ==========================================================================
+
+function addFriend(name) {
+  if (!name || !name.trim()) return;
+  name = name.trim();
+  if (collaborativeState.friends.some(
+    f => f.name.toLowerCase() === name.toLowerCase()
+  )) {
+    showTaskPopup('Friend already added!');
+    return;
+  }
+  collaborativeState.friends.push({
+    id: Date.now(),
+    name: name,
+    status: 'offline',
+    score: 0,
+    tasksCompleted: 0,
+    studyMinutes: 0
+  });
+  saveCollaborativeData();
+  renderFriendsList();
+  showTaskPopup(`${escapeHtml(name)} added as a study friend!`);
+}
+
+function removeFriend(friendId) {
+  collaborativeState.friends = collaborativeState.friends.filter(
+    f => f.id !== friendId
+  );
+  saveCollaborativeData();
+  renderFriendsList();
+}
+
+function createChallenge(title, type, days) {
+  const challenge = {
+    id: Date.now(),
+    title: title,
+    type: type,
+    endDate: Date.now() + (days * 86400000),
+    participants: [{ id: 'me', name: myProfile.name || 'You', score: 0 }]
+  };
+  collaborativeState.challenges.push(challenge);
+  collaborativeState.joinedChallenges.push(challenge.id);
+  saveCollaborativeData();
+  renderChallenges();
+  showTaskPopup(`Challenge "${escapeHtml(title)}" created!`);
+}
+
+function joinChallenge(challengeId) {
+  const challenge = collaborativeState.challenges.find(
+    c => c.id === challengeId
+  );
+  if (!challenge) return;
+  if (!challenge.participants.find(p => p.id === 'me')) {
+    challenge.participants.push({
+      id: 'me', name: myProfile.name || 'You', score: 0
+    });
+  }
+  if (!collaborativeState.joinedChallenges.includes(challengeId)) {
+    collaborativeState.joinedChallenges.push(challengeId);
+  }
+  saveCollaborativeData();
+  renderChallenges();
+}
+
+function leaveChallenge(challengeId) {
+  const challenge = collaborativeState.challenges.find(
+    c => c.id === challengeId
+  );
+  if (challenge) {
+    challenge.participants = challenge.participants.filter(
+      p => p.id !== 'me'
+    );
+  }
+  collaborativeState.joinedChallenges =
+    collaborativeState.joinedChallenges.filter(id => id !== challengeId);
+  saveCollaborativeData();
+  renderChallenges();
+}
+
+// ==========================================================================
+// WIRE UP STUDY SESSION & COLLAB UI BUTTONS (index.html tab)
+// ==========================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // -- Session buttons --
+  const startBtn = document.getElementById('startCollabSessionBtn');
+  const stopBtn = document.getElementById('stopCollabSessionBtn');
+  const inviteBtn = document.getElementById('inviteFriendBtn');
+
+  if (startBtn) {
+    startBtn.addEventListener('click', () => startCollabSession());
+  }
+  if (stopBtn) {
+    stopBtn.addEventListener('click', () => endCollabSession());
+  }
+  if (inviteBtn) {
+    inviteBtn.addEventListener('click', () => startCollabSession());
+  }
+
+  // -- Friend management buttons --
+  const confirmAddFriendBtn = document.getElementById('confirmAddFriendBtn');
+  const cancelAddFriendBtn = document.getElementById('cancelAddFriendBtn');
+  const friendNameInput = document.getElementById('friendNameInput');
+  const addFriendForm = document.getElementById('addFriendForm');
+
+  if (confirmAddFriendBtn) {
+    confirmAddFriendBtn.addEventListener('click', () => {
+      const name = friendNameInput ? friendNameInput.value : '';
+      addFriend(name);
+      if (friendNameInput) friendNameInput.value = '';
+      if (addFriendForm) addFriendForm.style.display = 'none';
+    });
+  }
+  if (cancelAddFriendBtn) {
+    cancelAddFriendBtn.addEventListener('click', () => {
+      if (addFriendForm) addFriendForm.style.display = 'none';
+    });
+  }
+
+  // -- Challenge creation --
+  const createChallengeBtn = document.getElementById('createChallengeBtn');
+  const confirmCreateChallengeBtn = document.getElementById('confirmCreateChallengeBtn');
+  const cancelChallengeBtn = document.getElementById('cancelChallengeBtn');
+  const createChallengeForm = document.getElementById('createChallengeForm');
+
+  if (createChallengeBtn) {
+    createChallengeBtn.addEventListener('click', () => {
+      if (createChallengeForm) {
+        createChallengeForm.style.display =
+          createChallengeForm.style.display === 'grid' ? 'none' : 'grid';
+      }
+    });
+  }
+  if (confirmCreateChallengeBtn) {
+    confirmCreateChallengeBtn.addEventListener('click', () => {
+      const title = (document.getElementById('challengeTitleInput') || {}).value || '';
+      const type = (document.getElementById('challengeTypeSelect') || {}).value || 'tasks';
+      const days = parseInt((document.getElementById('challengeDaysInput') || {}).value) || 7;
+      if (!title.trim()) {
+        showTaskPopup('Please enter a challenge name.');
+        return;
+      }
+      createChallenge(title.trim(), type, days);
+      if (createChallengeForm) createChallengeForm.style.display = 'none';
+    });
+  }
+  if (cancelChallengeBtn) {
+    cancelChallengeBtn.addEventListener('click', () => {
+      if (createChallengeForm) createChallengeForm.style.display = 'none';
+    });
+  }
+
+  // -- Leaderboard refresh --
+  const refreshBtn = document.getElementById('refreshLeaderboardBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => updateLeaderboard());
+  }
+
+  // -- Render initial UI --
+  renderFriendsList();
+  renderChallenges();
+  updateCollabSessionUI();
+
+  // Resume heartbeat if a session was active across page reload
+  if (collaborativeState.currentSession) {
+    startSessionHeartbeat();
+  }
+});
