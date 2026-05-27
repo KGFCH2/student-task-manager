@@ -2,6 +2,21 @@
 // COLLABORATIVE STUDY ENVIRONMENT - FULL IMPLEMENTATION
 // ==========================================================================
 
+// Sanitize user-supplied strings before injecting into innerHTML.
+// escapeHTML (capital H) is defined privately inside toast.js and is not
+// accessible here. escapeHtml (lowercase h) was called throughout this file
+// but never defined anywhere, causing a ReferenceError that crashed every
+// render function (renderFriendsList, renderChallenges, renderLeaderboard,
+// startCollabSession) and made the entire Study Together tab non-functional.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Global collaborative state
 let collaborativeState = {
   friends: [],
