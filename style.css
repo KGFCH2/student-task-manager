@@ -156,8 +156,11 @@ body {
 
 /* Main Content */
 .container {
-  max-width: 600px;
-  width: 90%;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 30px;
+  max-width: 1500px;
+  width: 95%;
   margin: 2rem auto;
   padding: 2rem;
   background-color: var(--card-bg);
@@ -165,6 +168,12 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   flex: 1;
+  align-items: start;
+}
+
+.legal-page .container {
+  display: block;
+  max-width: 800px !important;
 }
 
 /* Footer */
@@ -2507,6 +2516,16 @@ body.light .subject-bar-container {
   --success: #22c55e;
   --danger: #ef4444;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+
+  /* Fallbacks for older CSS selectors */
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --text-light: var(--textLight);
+  --card-bg: var(--card);
+  --border-color: var(--border);
+  --button-bg: var(--primary);
+  --button-hover: #9333ea;
+  --accent-color: var(--secondary);
 }
 
 /* Aurora Borealis (Dark Emerald) */
@@ -2521,6 +2540,16 @@ body.light .subject-bar-container {
   --success: #10b981;
   --danger: #f43f5e;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+
+  /* Fallbacks for older CSS selectors */
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --text-light: var(--textLight);
+  --card-bg: var(--card);
+  --border-color: var(--border);
+  --button-bg: var(--primary);
+  --button-hover: #059669;
+  --accent-color: var(--secondary);
 }
 
 /* Neon Cyberpunk (Dark Synthwave) */
@@ -2535,6 +2564,16 @@ body.light .subject-bar-container {
   --success: #10b981;
   --danger: #ef4444;
   --shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+
+  /* Fallbacks for older CSS selectors */
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --text-light: var(--textLight);
+  --card-bg: var(--card);
+  --border-color: var(--border);
+  --button-bg: var(--primary);
+  --button-hover: #db2777;
+  --accent-color: var(--secondary);
 }
 
 /* Sunset Gold (Premium Light) */
@@ -2549,6 +2588,16 @@ body.light .subject-bar-container {
   --success: #10b981;
   --danger: #ef4444;
   --shadow: 0 15px 45px rgba(220, 150, 50, 0.05);
+
+  /* Fallbacks for older CSS selectors */
+  --bg-color: var(--bg);
+  --text-color: var(--text);
+  --text-light: var(--textLight);
+  --card-bg: var(--card);
+  --border-color: var(--border);
+  --button-bg: var(--primary);
+  --button-hover: #d97706;
+  --accent-color: var(--secondary);
 }
 
 /* 2. Theme Dot Selector in Topbar */
@@ -2663,6 +2712,18 @@ body.light .burger-btn,
   .container {
     grid-template-columns: 1fr;
     padding: 20px 15px;
+  }
+
+  .header-inner {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+    padding: 5px 0 !important;
+  }
+
+  .header-nav {
+    justify-content: center !important;
+    width: 100% !important;
   }
 
   .sidebar {
