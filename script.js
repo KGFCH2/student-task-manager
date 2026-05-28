@@ -4014,6 +4014,23 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// --- ID Generation ---
+// Date.now() has millisecond resolution. Two tasks added within the same
+// millisecond (programmatic calls, keyboard shortcuts, rapid submission)
+// receive identical IDs. toggleTask/removeTask/editTask all key off this ID,
+// so a collision causes both tasks to be toggled or deleted simultaneously —
+// silent, permanent data loss with no error.
+//
+// generateTaskId() combines:
+//   - Date.now()  : millisecond timestamp (base uniqueness)
+//   - _idCounter  : monotonic counter (handles same-millisecond calls)
+//   - Math.random(): 9-char random suffix (guards against counter reset
+//                    after page reload when timestamp may repeat)
+let _idCounter = 0;
+function generateTaskId() {
+  return Date.now() + '_' + (++_idCounter) + '_' + Math.random().toString(36).slice(2, 11);
+}
+
 // --- Selectors ---
 const taskForm = document.getElementById("taskForm");
 const taskInput = document.getElementById("taskInput");
@@ -4067,7 +4084,7 @@ function addTask() {
   const dependsSel = document.getElementById('dependsSelect');
   const dependsVals = dependsSel ? Array.from(dependsSel.selectedOptions).map(o => o.value).filter(v => v !== '') : [];
   const newTask = {
-    id: Date.now(),
+    id: generateTaskId(),
     text: text,
     completed: false,
     timestamp: `(${day}, ${date} at ${time})`,
@@ -4197,7 +4214,7 @@ function renderTasks() {
             </span>`;
     }
     li.innerHTML = `
-      <input type="checkbox" ${task.completed ? "checked" : ""} onchange="toggleTask(${task.id})">
+      <input type="checkbox" ${task.completed ? "checked" : ""} onchange="toggleTask('${task.id}')">
       <span>
         ${task.text}
         ${depBadge}
@@ -4217,8 +4234,8 @@ function renderTasks() {
         <small style="display: block; font-size: 0.75rem; opacity: 0.7;">${escapeHtml(task.timestamp)}</small>
       </span>
       <div style="display: flex; gap: 5px;">
-        <button onclick="editTask(${task.id})" style="padding: 0.5rem; font-size: 0.8rem;">Edit</button>
-        <button onclick="removeTask(${task.id})" style="padding: 0.5rem; font-size: 0.8rem; background: var(--error-color, #ef4444);">Remove</button>
+        <button onclick="editTask('${task.id}')" style="padding: 0.5rem; font-size: 0.8rem;">Edit</button>
+        <button onclick="removeTask('${task.id}')" style="padding: 0.5rem; font-size: 0.8rem; background: var(--error-color, #ef4444);">Remove</button>
       </div>
     `;
 
