@@ -176,6 +176,11 @@ body {
   max-width: 800px !important;
 }
 
+.leaderboard-page.container {
+  display: block;
+  max-width: 1200px;
+}
+
 /* Footer */
 .site-footer {
   padding: 2rem 1.5rem;
@@ -786,6 +791,11 @@ li small {
 }
 
 /* Collapsible sidebar - minimal styles */
+body.sidebar-collapsed .container {
+  grid-template-columns: 72px 1fr;
+  gap: 20px;
+}
+
 body.sidebar-collapsed .sidebar {
   width: 72px !important;
   padding: 14px 8px !important;
@@ -798,7 +808,7 @@ body.sidebar-collapsed .sidebar .stats-grid, body.sidebar-collapsed .sidebar .ac
 
 /* Shift main content to account for collapsed sidebar on wide screens */
 @media (min-width: 1000px) {
-  body.sidebar-collapsed .main-content { margin-left: 88px; transition: margin 0.28s ease; }
+  body.sidebar-collapsed .main-content { margin-left: 0; transition: margin 0.28s ease; }
 }
 
 /* Icon-only mode for badges */
@@ -1403,14 +1413,6 @@ body.sidebar-collapsed .badges { display:flex; gap:8px; justify-content:center; 
 }
 
 /* RESPONSIVE */
-
-@media(max-width: 1150px) {
-
-  .container {
-    grid-template-columns: 1fr;
-  }
-
-}
 
 @media(max-width: 750px) {
 
