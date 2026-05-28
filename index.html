@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="collaborative.css">
 </head>
 
-<body>
+<body class="dashboard-page">
   <a href="#quests-tab" class="skip-to-content" style="position: absolute; top: -100px; left: 10px; background: var(--primary); color: #fff; padding: 8px 16px; border-radius: 4px; z-index: 10000; transition: top 0.2s;" onfocus="this.style.top='10px'" onblur="this.style.top='-100px'">Skip to content</a>
 
   <!-- GLOBAL HEADER -->
@@ -90,6 +90,42 @@
           </button>
         </div>
       </div>
+
+      <!-- SIDEBAR MENU -->
+      <nav class="sidebar-nav">
+        <a href="index.html" class="sidebar-nav-item active">
+          <i class="ri-dashboard-line"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="notes.html" class="sidebar-nav-item">
+          <i class="ri-sticky-note-line"></i>
+          <span>Revision Notes</span>
+        </a>
+        <a href="Challenge.html" class="sidebar-nav-item">
+          <i class="ri-trophy-line"></i>
+          <span>Challenges</span>
+        </a>
+        <a href="leaderboard.html" class="sidebar-nav-item">
+          <i class="ri-medal-line"></i>
+          <span>Leaderboard</span>
+        </a>
+        <a href="reflection.html" class="sidebar-nav-item">
+          <i class="ri-focus-3-line"></i>
+          <span>Reflection</span>
+        </a>
+        <a href="docs.html" class="sidebar-nav-item">
+          <i class="ri-book-read-line"></i>
+          <span>Docs</span>
+        </a>
+        <a href="faq.html" class="sidebar-nav-item">
+          <i class="ri-question-line"></i>
+          <span>FAQ</span>
+        </a>
+        <a href="Privacy.html" class="sidebar-nav-item">
+          <i class="ri-lock-line"></i>
+          <span>Privacy</span>
+        </a>
+      </nav>
 
       <!-- PROFILE CARD -->
       <div class="profile-card" id="profileCard" style="cursor: pointer;" title="Edit Profile">
