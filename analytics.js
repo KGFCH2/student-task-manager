@@ -636,10 +636,39 @@
   window.loadQuests = loadQuests;
 })();
 
+const OFFLINE_QUEUE_KEY = "taskquest_v1.offline_analytics_queue";
+
 const logEventSafely = (eventName, eventData) => {
   try {
-    console.log(`[Analytics] ${eventName}:`, eventData);
+    const payload = {
+      event: eventName,
+      data: eventData,
+      timestamp: new Date().toISOString()
+    };
+    if (navigator.onLine) {
+      console.log(`[Analytics] ${eventName}:`, eventData);
+    } else {
+      console.warn(`[Analytics] Offline. Queueing event: ${eventName}`);
+      const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]");
+      queue.push(payload);
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    }
   } catch (error) {
-    console.error('Failed to log analytics event');
+    console.error('Failed to log analytics event', error);
   }
 };
+
+window.addEventListener("online", () => {
+  try {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]");
+    if (queue.length > 0) {
+      console.log(`[Analytics] Device back online. Syncing ${queue.length} queued events...`, queue);
+      localStorage.removeItem(OFFLINE_QUEUE_KEY);
+      if (typeof window.showToast === "function") {
+        window.showToast(`Synced ${queue.length} offline analytics events!`, "info");
+      }
+    }
+  } catch (e) {
+    console.error("Failed to sync offline analytics events:", e);
+  }
+});
