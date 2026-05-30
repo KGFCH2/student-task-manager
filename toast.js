@@ -127,6 +127,45 @@
   `;
   document.head.appendChild(styleEl);
 
+  // ── Accessibility Announcer Queue ───────────────────────────────────────
+
+  const srQueue = [];
+  let srTimeout = null;
+  let srAnnouncer = null;
+
+  function initSRAnnouncer() {
+    if (srAnnouncer) return;
+    srAnnouncer = document.createElement("div");
+    srAnnouncer.id = "toast-sr-announcer";
+    srAnnouncer.style.cssText = "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
+    srAnnouncer.setAttribute("aria-live", "polite");
+    srAnnouncer.setAttribute("aria-atomic", "true");
+    document.body.appendChild(srAnnouncer);
+  }
+
+  function announceToScreenReader(message) {
+    initSRAnnouncer();
+    srQueue.push(message);
+    processSRQueue();
+  }
+
+  function processSRQueue() {
+    if (srTimeout) return;
+    if (srQueue.length === 0) return;
+    const nextMsg = srQueue.shift();
+    if (srAnnouncer) {
+      srAnnouncer.textContent = "";
+      // Slight delay to force screen readers to register the text update
+      setTimeout(() => {
+        if (srAnnouncer) srAnnouncer.textContent = nextMsg;
+      }, 50);
+    }
+    srTimeout = setTimeout(() => {
+      srTimeout = null;
+      processSRQueue();
+    }, 1500);
+  }
+
   // ── Container ─────────────────────────────────────────────────────────────
 
   function getContainer() {
@@ -140,6 +179,7 @@
     }
     return container;
   }
+
 
   // ── Core API ──────────────────────────────────────────────────────────────
 
@@ -173,6 +213,7 @@
     closeBtn.addEventListener("click", () => dismiss(toast));
 
     container.appendChild(toast);
+    announceToScreenReader(message);
 
     if (duration > 0) {
       setTimeout(() => dismiss(toast), duration);
